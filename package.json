@@ -1,0 +1,17 @@
+{
+  "name": "fetch-with-retry",
+  "version": "1.0.0",
+  "description": "Simple lib that adds retries out of the box to node-fetch",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "francescorivola",
+  "license": "MIT",
+  "dependencies": {
+    "node-fetch": "^2.7.0"
+  },
+  "devDependencies": {
+    "nock": "^13.5.1"
+  }
+}

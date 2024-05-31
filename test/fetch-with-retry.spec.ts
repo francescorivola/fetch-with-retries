@@ -5,7 +5,7 @@ import { buildFetchWithRetries } from "../src/fetch-with-retry";
 
 const retryStatusCodes = [408, 425, 429, 500, 502, 503, 504];
 
-describe("fetch-with-retry", async () => {
+describe("fetch-with-retries", async () => {
   await beforeEach(() => {
     nock.disableNetConnect();
   });

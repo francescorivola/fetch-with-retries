@@ -39,7 +39,7 @@ describe("fetch-with-retries", async () => {
         onRetry: () => {
           retries++;
         },
-      }
+      },
     );
 
     equal(retries, 0, "retries");
@@ -73,7 +73,7 @@ describe("fetch-with-retries", async () => {
         onRetry: () => {
           retries++;
         },
-      }
+      },
     );
 
     equal(retries, 0, "retries");
@@ -113,7 +113,7 @@ describe("fetch-with-retries", async () => {
             attempts = params.attempt;
             retries++;
           },
-        }
+        },
       );
 
       equal(retries, 3, "retries");
@@ -155,7 +155,7 @@ describe("fetch-with-retries", async () => {
             lastRetryIsRateLimitRetry = params.rateLimitRetry;
             retries++;
           },
-        }
+        },
       );
 
       equal(retries, 3, "retries");
@@ -201,7 +201,7 @@ describe("fetch-with-retries", async () => {
             lastRetryIsRateLimitRetry = params.rateLimitRetry;
             retries++;
           },
-        }
+        },
       );
 
       equal(retries, 10, "retries");
@@ -244,7 +244,7 @@ describe("fetch-with-retries", async () => {
           attempts = params.attempt;
           retries++;
         },
-      }
+      },
     );
 
     equal(retries, 3, "retries");
@@ -284,7 +284,7 @@ describe("fetch-with-retries", async () => {
             attempts = params.attempt;
             retries++;
           },
-        }
+        },
       );
     } catch (e) {
       error = e;
@@ -327,7 +327,7 @@ describe("fetch-with-retries", async () => {
           onRetry: () => {
             retries++;
           },
-        }
+        },
       );
     } catch (e) {
       error = e;
@@ -370,7 +370,7 @@ describe("fetch-with-retries", async () => {
           onRetry: () => {
             retries++;
           },
-        }
+        },
       );
     } catch (e) {
       error = e;

@@ -11,7 +11,7 @@ export type FetchWithRetries = (
   requestInit: RequestInit,
   options: {
     onRetry?: (params: OnRetry) => void;
-  }
+  },
 ) => Promise<Response>;
 
 /**
@@ -40,7 +40,7 @@ export function buildFetchWithRetries(options: {
     requestInit: RequestInit,
     options: {
       onRetry?: (params: OnRetry) => void;
-    } = {}
+    } = {},
   ): Promise<Response> {
     const { onRetry } = options;
     const signal = requestInit.signal as AbortSignal;
@@ -162,7 +162,7 @@ function isErrorThatHaveToBeRetried(response: Response): boolean {
 
 function wait(
   durationInMilliseconds: number,
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<void> {
   return new Promise<void>((resolve) => {
     signal?.addEventListener("abort", handleAbort);

@@ -1,2 +1,3 @@
-# fetch-with-retry
-Simple lib that adds retries out of the box to node-fetch
+# fetch-with-retries
+
+Simple lib that adds retries out of the box to native Node.js fetch

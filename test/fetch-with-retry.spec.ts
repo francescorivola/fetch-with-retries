@@ -39,7 +39,7 @@ describe("fetch-with-retry", async () => {
         onRetry: () => {
           retries++;
         },
-      }
+      },
     );
 
     toEqual(retries, 0, "retries");
@@ -73,7 +73,7 @@ describe("fetch-with-retry", async () => {
         onRetry: () => {
           retries++;
         },
-      }
+      },
     );
 
     expect(retries).to.equal(0, "retries");
@@ -113,7 +113,7 @@ describe("fetch-with-retry", async () => {
             attempts = params.attempt;
             retries++;
           },
-        }
+        },
       );
 
       expect(retries).to.equal(3, "retries");
@@ -155,14 +155,14 @@ describe("fetch-with-retry", async () => {
             lastRetryIsRateLimitRetry = params.rateLimitRetry;
             retries++;
           },
-        }
+        },
       );
 
       expect(retries).to.equal(3, "retries");
       expect(attempts).to.equal(3, "attempts");
       expect(lastRetryIsRateLimitRetry).to.equal(
         false,
-        "last retry is rate limit retry"
+        "last retry is rate limit retry",
       );
       expect(response.ok).to.equal(false);
       expect(response.status).to.equal(status);
@@ -204,14 +204,14 @@ describe("fetch-with-retry", async () => {
             lastRetryIsRateLimitRetry = params.rateLimitRetry;
             retries++;
           },
-        }
+        },
       );
 
       expect(retries).to.equal(10, "retries");
       expect(attempts).to.equal(10, "attempts");
       expect(lastRetryIsRateLimitRetry).to.equal(
         true,
-        "last retry is rate limit retry"
+        "last retry is rate limit retry",
       );
       expect(response.ok).to.equal(true);
       expect(response.status).to.equal(200);
@@ -250,7 +250,7 @@ describe("fetch-with-retry", async () => {
           attempts = params.attempt;
           retries++;
         },
-      }
+      },
     );
 
     expect(retries).to.equal(3, "retries");
@@ -290,7 +290,7 @@ describe("fetch-with-retry", async () => {
             attempts = params.attempt;
             retries++;
           },
-        }
+        },
       );
     } catch (e) {
       error = e;
@@ -300,7 +300,7 @@ describe("fetch-with-retry", async () => {
     expect(attempts).to.equal(3, "attempts");
     expect(error instanceof Error).to.equal(true, "error instance of error");
     expect(error.message).to.equal(
-      "request to https://test.com/test failed, reason: Network error"
+      "request to https://test.com/test failed, reason: Network error",
     );
     expect(nockScope.isDone()).to.equal(true);
   });
@@ -335,7 +335,7 @@ describe("fetch-with-retry", async () => {
           onRetry: () => {
             retries++;
           },
-        }
+        },
       );
     } catch (e) {
       error = e;
@@ -378,7 +378,7 @@ describe("fetch-with-retry", async () => {
           onRetry: () => {
             retries++;
           },
-        }
+        },
       );
     } catch (e) {
       error = e;

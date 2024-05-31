@@ -1,7 +1,5 @@
-import fetch, { RequestInit, Response } from "node-fetch";
-
 export type OnRetry = {
-  response?: Response;
+  response: Response | null;
   error?: any;
   attempt: number;
   delay: number;
@@ -13,7 +11,7 @@ export type FetchWithRetries = (
   requestInit: RequestInit,
   options: {
     onRetry?: (params: OnRetry) => void;
-  }
+  },
 ) => Promise<Response>;
 
 /**
@@ -42,7 +40,7 @@ export function buildFetchWithRetries(options: {
     requestInit: RequestInit,
     options: {
       onRetry?: (params: OnRetry) => void;
-    } = {}
+    } = {},
   ): Promise<Response> {
     const { onRetry } = options;
     const signal = requestInit.signal as AbortSignal;
@@ -51,8 +49,8 @@ export function buildFetchWithRetries(options: {
     let rateLimitRetries = 0;
     let retry = false;
     let rateLimitRetry = false;
-    let response: Response;
-    let error = null;
+    let response: Response | null = null;
+    let error: any = null;
 
     let aborted = false;
     function setAborted() {
@@ -68,7 +66,7 @@ export function buildFetchWithRetries(options: {
       try {
         response = await fetch(url, requestInit);
       } catch (e) {
-        if (e.type === "aborted") {
+        if ((e as any).type === "aborted") {
           // do nothing
         } else if (!hasReachedMaxRetries(errorRetries)) {
           error = e;
@@ -79,19 +77,19 @@ export function buildFetchWithRetries(options: {
       }
 
       rateLimitRetry =
-        response &&
+        response !== null &&
         isRateLimitRetry(response) &&
         !hasReachedRateLimitMaxRetries(rateLimitRetries);
       retry =
         error ||
-        (response &&
+        (response !== null &&
           isErrorThatHaveToBeRetried(response) &&
           !hasReachedMaxRetries(errorRetries)) ||
         rateLimitRetry;
 
       if (retry && !aborted) {
         let delay: number;
-        if (rateLimitRetry) {
+        if (rateLimitRetry && response !== null) {
           rateLimitRetries++;
           delay = getRateLimitDelay(response);
         } else {
@@ -151,7 +149,7 @@ function isRateLimitRetry(response: Response): boolean {
 }
 
 function getRetryAfterInSeconds(response: Response): number {
-  return parseInt(response.headers.get("Retry-After"), 10);
+  return parseInt(response.headers.get("Retry-After") || "", 10);
 }
 
 function getRetryAfterInMilliseconds(response: Response): number {
@@ -164,7 +162,7 @@ function isErrorThatHaveToBeRetried(response: Response): boolean {
 
 function wait(
   durationInMilliseconds: number,
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<void> {
   return new Promise<void>((resolve) => {
     signal?.addEventListener("abort", handleAbort);

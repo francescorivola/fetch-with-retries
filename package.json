@@ -1,17 +1,24 @@
 {
-  "name": "fetch-with-retry",
+  "name": "fetch-with-retries",
   "version": "1.0.0",
-  "description": "Simple lib that adds retries out of the box to node-fetch",
+  "description": "Simple lib that adds retries out of the box to native node",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --require ts-node/register --test --watch test/*.spec.ts",
+    "test-ci": "c8 node --require ts-node/register --test test/*.spec.ts",
+    "build": "tsc -p tsconfig.json",
+    "build-watch": "tsc -p tsconfig.json --watch",
+    "format": "prettier --check **/*.ts",
+    "lint": "eslint . --ext .ts"
   },
   "author": "francescorivola",
   "license": "MIT",
-  "dependencies": {
-    "node-fetch": "^2.7.0"
-  },
   "devDependencies": {
-    "nock": "^13.5.1"
+    "@types/node": "^20.12.13",
+    "eslint": "^9.3.0",
+    "nock": "^14.0.0-beta.7",
+    "prettier": "^3.2.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5"
   }
 }

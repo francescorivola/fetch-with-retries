@@ -271,7 +271,7 @@ describe("fetch-with-retry", async () => {
     });
     let retries = 0;
     let attempts = 0;
-    let error: any = null;
+    let error: any = null; // eslint-disable-line @typescript-eslint/no-explicit-any
 
     try {
       await fetchWithRetries(
@@ -312,7 +312,7 @@ describe("fetch-with-retry", async () => {
       },
     });
     let retries = 0;
-    let error: any = null;
+    let error: any = null; // eslint-disable-line @typescript-eslint/no-explicit-any
     const controller = new AbortController();
     const abortError = new Error("Boom, is aborted");
     try {
@@ -354,7 +354,7 @@ describe("fetch-with-retry", async () => {
       },
     });
     let retries = 0;
-    let error: any = null;
+    let error: any = null; // eslint-disable-line @typescript-eslint/no-explicit-any
     const controller = new AbortController();
     const abortError = new Error("Boom, is aborted");
 

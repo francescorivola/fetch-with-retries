@@ -1,6 +1,6 @@
 export type OnRetry = {
   response: Response | null;
-  error?: any;
+  error?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
   attempt: number;
   delay: number;
   rateLimitRetry: boolean;
@@ -50,7 +50,7 @@ export function buildFetchWithRetries(options: {
     let retry = false;
     let rateLimitRetry = false;
     let response: Response | null = null;
-    let error: any = null;
+    let error: any = null; // eslint-disable-line @typescript-eslint/no-explicit-any
 
     let aborted = false;
     function setAborted() {
@@ -66,7 +66,7 @@ export function buildFetchWithRetries(options: {
       try {
         response = await fetch(url, requestInit);
       } catch (e) {
-        if ((e as any).type === "aborted") {
+        if ((e as { type: string }).type === "aborted") {
           // do nothing
         } else if (!hasReachedMaxRetries(errorRetries)) {
           error = e;

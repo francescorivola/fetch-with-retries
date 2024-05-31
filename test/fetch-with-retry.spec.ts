@@ -1,6 +1,6 @@
-import nock from "nock";
+import * as nock from "nock";
 import { describe, beforeEach, afterEach, test } from "node:test";
-import { toEqual } from "node:assert";
+import { equal, deepStrictEqual } from "node:assert";
 import { buildFetchWithRetries } from "../src/fetch-with-retry";
 
 const retryStatusCodes = [408, 425, 429, 500, 502, 503, 504];
@@ -39,14 +39,14 @@ describe("fetch-with-retry", async () => {
         onRetry: () => {
           retries++;
         },
-      },
+      }
     );
 
-    toEqual(retries, 0, "retries");
-    expect(response.ok).to.equal(true);
+    equal(retries, 0, "retries");
+    equal(response.ok, true);
     const body = await response.json();
-    expect(body).to.be.deep.equal({ message: "ok" });
-    expect(nockScope.isDone()).to.equal(true);
+    deepStrictEqual(body, { message: "ok" });
+    equal(nockScope.isDone(), true);
   });
 
   await test("should return the response if not ok and cannot be retried", async () => {
@@ -73,14 +73,14 @@ describe("fetch-with-retry", async () => {
         onRetry: () => {
           retries++;
         },
-      },
+      }
     );
 
-    expect(retries).to.equal(0, "retries");
-    expect(response.ok).to.equal(false);
+    equal(retries, 0, "retries");
+    equal(response.ok, false);
     const body = await response.json();
-    expect(body).to.be.deep.equal({ message: "bad request" });
-    expect(nockScope.isDone()).to.equal(true);
+    deepStrictEqual(body, { message: "bad request" });
+    equal(nockScope.isDone(), true);
   });
 
   for (const status of retryStatusCodes) {
@@ -113,15 +113,15 @@ describe("fetch-with-retry", async () => {
             attempts = params.attempt;
             retries++;
           },
-        },
+        }
       );
 
-      expect(retries).to.equal(3, "retries");
-      expect(attempts).to.equal(3, "attempts");
-      expect(response.ok).to.equal(true);
+      equal(retries, 3, "retries");
+      equal(attempts, 3, "attempts");
+      equal(response.ok, true);
       const body = await response.json();
-      expect(body).to.be.deep.equal({ message: "ok" });
-      expect(nockScope.isDone()).to.equal(true);
+      deepStrictEqual(body, { message: "ok" });
+      equal(nockScope.isDone(), true);
     });
   }
 
@@ -155,20 +155,17 @@ describe("fetch-with-retry", async () => {
             lastRetryIsRateLimitRetry = params.rateLimitRetry;
             retries++;
           },
-        },
+        }
       );
 
-      expect(retries).to.equal(3, "retries");
-      expect(attempts).to.equal(3, "attempts");
-      expect(lastRetryIsRateLimitRetry).to.equal(
-        false,
-        "last retry is rate limit retry",
-      );
-      expect(response.ok).to.equal(false);
-      expect(response.status).to.equal(status);
+      equal(retries, 3, "retries");
+      equal(attempts, 3, "attempts");
+      equal(lastRetryIsRateLimitRetry, false, "last retry is rate limit retry");
+      equal(response.ok, false);
+      equal(response.status, status);
       const body = await response.json();
-      expect(body).to.be.deep.equal({ message: "error" });
-      expect(nockScope.isDone()).to.equal(true);
+      deepStrictEqual(body, { message: "error" });
+      equal(nockScope.isDone(), true);
     });
   }
 
@@ -204,20 +201,17 @@ describe("fetch-with-retry", async () => {
             lastRetryIsRateLimitRetry = params.rateLimitRetry;
             retries++;
           },
-        },
+        }
       );
 
-      expect(retries).to.equal(10, "retries");
-      expect(attempts).to.equal(10, "attempts");
-      expect(lastRetryIsRateLimitRetry).to.equal(
-        true,
-        "last retry is rate limit retry",
-      );
-      expect(response.ok).to.equal(true);
-      expect(response.status).to.equal(200);
+      equal(retries, 10, "retries");
+      equal(attempts, 10, "attempts");
+      equal(lastRetryIsRateLimitRetry, true, "last retry is rate limit retry");
+      equal(response.ok, true);
+      equal(response.status, 200);
       const body = await response.json();
-      expect(body).to.be.deep.equal({ message: "ok" });
-      expect(nockScope.isDone()).to.equal(true);
+      deepStrictEqual(body, { message: "ok" });
+      equal(nockScope.isDone(), true);
     });
   }
 
@@ -250,15 +244,15 @@ describe("fetch-with-retry", async () => {
           attempts = params.attempt;
           retries++;
         },
-      },
+      }
     );
 
-    expect(retries).to.equal(3, "retries");
-    expect(attempts).to.equal(3, "attempts");
-    expect(response.ok).to.equal(true);
+    equal(retries, 3, "retries");
+    equal(attempts, 3, "attempts");
+    equal(response.ok, true);
     const body = await response.json();
-    expect(body).to.be.deep.equal({ message: "ok" });
-    expect(nockScope.isDone()).to.equal(true);
+    deepStrictEqual(body, { message: "ok" });
+    equal(nockScope.isDone(), true);
   });
 
   await test("should throw the error after retrying network errors", async () => {
@@ -277,7 +271,7 @@ describe("fetch-with-retry", async () => {
     });
     let retries = 0;
     let attempts = 0;
-    let error = null;
+    let error: any = null;
 
     try {
       await fetchWithRetries(
@@ -290,19 +284,17 @@ describe("fetch-with-retry", async () => {
             attempts = params.attempt;
             retries++;
           },
-        },
+        }
       );
     } catch (e) {
       error = e;
     }
 
-    expect(retries).to.equal(3, "retries");
-    expect(attempts).to.equal(3, "attempts");
-    expect(error instanceof Error).to.equal(true, "error instance of error");
-    expect(error.message).to.equal(
-      "request to https://test.com/test failed, reason: Network error",
-    );
-    expect(nockScope.isDone()).to.equal(true);
+    equal(retries, 3, "retries");
+    equal(attempts, 3, "attempts");
+    equal(error instanceof Error, true, "error instance of error");
+    equal(error.message, "Network error");
+    equal(nockScope.isDone(), true);
   });
 
   await test("should abort while waiting if signal notify an abort", async () => {
@@ -320,7 +312,7 @@ describe("fetch-with-retry", async () => {
       },
     });
     let retries = 0;
-    let error = null;
+    let error: any = null;
     const controller = new AbortController();
     const abortError = new Error("Boom, is aborted");
     try {
@@ -335,16 +327,16 @@ describe("fetch-with-retry", async () => {
           onRetry: () => {
             retries++;
           },
-        },
+        }
       );
     } catch (e) {
       error = e;
     }
 
-    expect(retries).to.equal(1, "retries");
-    expect(error instanceof Error).to.equal(true, "error instance");
-    expect(error.message).to.equal("Boom, is aborted");
-    expect(nockScope.isDone()).to.equal(false);
+    equal(retries, 1, "retries");
+    equal(error instanceof Error, true, "error instance");
+    equal(error.message, "Boom, is aborted");
+    equal(nockScope.isDone(), false);
   });
 
   await test("should abort while making the request if signal notify an abort", async () => {
@@ -362,7 +354,7 @@ describe("fetch-with-retry", async () => {
       },
     });
     let retries = 0;
-    let error = null;
+    let error: any = null;
     const controller = new AbortController();
     const abortError = new Error("Boom, is aborted");
 
@@ -378,15 +370,15 @@ describe("fetch-with-retry", async () => {
           onRetry: () => {
             retries++;
           },
-        },
+        }
       );
     } catch (e) {
       error = e;
     }
 
-    expect(retries).to.equal(0, "retries");
-    expect(error instanceof Error).to.equal(true, "error instance");
-    expect(error.message).to.equal("Boom, is aborted");
-    expect(nockScope.isDone()).to.equal(true);
+    equal(retries, 0, "retries");
+    equal(error instanceof Error, true, "error instance");
+    equal(error.message, "Boom, is aborted");
+    equal(nockScope.isDone(), true);
   });
 });

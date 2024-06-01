@@ -128,7 +128,7 @@ export function buildFetchWithRetries(
             signal?.throwIfAborted();
         }
 
-        return response as Response;
+        return response!;
     }
 
     return fetchWithRetries;

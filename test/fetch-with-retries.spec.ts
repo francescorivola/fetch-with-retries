@@ -5,6 +5,15 @@ import { buildFetchWithRetries } from '../src/index';
 
 const retryStatusCodes = [408, 425, 429, 500, 502, 503, 504];
 
+class FetchError extends Error {
+    public readonly cause: { code: string };
+
+    constructor(code: string) {
+        super('fetch failed');
+        this.cause = { code };
+    }
+}
+
 describe('fetch-with-retries', async () => {
     await beforeEach(() => {
         nock.disableNetConnect();
@@ -275,7 +284,7 @@ describe('fetch-with-retries', async () => {
         const nockScope = nock('https://test.com')
             .get('/test')
             .times(3)
-            .replyWithError(new Error('Network error'))
+            .replyWithError(new FetchError('ENOTFOUND'))
             .get('/test')
             .reply(200, { message: 'ok' });
         const fetchWithRetries = buildFetchWithRetries({
@@ -311,11 +320,37 @@ describe('fetch-with-retries', async () => {
         equal(nockScope.isDone(), true);
     });
 
+    await test('should throw the error without retry if malformed uri', async () => {
+        const fetchWithRetries = buildFetchWithRetries();
+        let error: any = null; // eslint-disable-line @typescript-eslint/no-explicit-any
+        let retries = 0;
+
+        try {
+            await fetchWithRetries(
+                'this-is-not-an-uri',
+                {
+                    method: 'GET'
+                },
+                {
+                    onRetry: () => {
+                        retries++;
+                    }
+                }
+            );
+        } catch (e) {
+            error = e;
+        }
+
+        equal(retries, 0, 'retries');
+        equal(error instanceof Error, true, 'error instance of error');
+        equal(error.message, 'Failed to parse URL from this-is-not-an-uri');
+    });
+
     await test('should throw the error after retrying network errors', async () => {
         const nockScope = nock('https://test.com')
             .get('/test')
             .times(4)
-            .replyWithError(new Error('Network error'));
+            .replyWithError(new FetchError('ECONNRESET'));
         const fetchWithRetries = buildFetchWithRetries({
             maxRetries: 3,
             initialDelay: 0,
@@ -348,16 +383,59 @@ describe('fetch-with-retries', async () => {
 
         equal(retries, 3, 'retries');
         equal(attempts, 3, 'attempts');
-        equal(error instanceof Error, true, 'error instance of error');
-        equal(error.message, 'Network error');
+        equal(
+            error instanceof FetchError,
+            true,
+            'error instance of fetch error'
+        );
+        equal(error.cause.code, 'ECONNRESET');
         equal(nockScope.isDone(), true);
+    });
+
+    await test('should throw the error after retrying network errors (real one)', async () => {
+        nock.enableNetConnect();
+        const fetchWithRetries = buildFetchWithRetries({
+            maxRetries: 1,
+            initialDelay: 0,
+            factor: 2,
+            rateLimit: {
+                maxRetries: 10,
+                maxDelay: 60_000
+            }
+        });
+        let retries = 0;
+        let attempts = 0;
+        let error: any = null; // eslint-disable-line @typescript-eslint/no-explicit-any
+
+        try {
+            await fetchWithRetries(
+                'https://this-url-does-not-exist.com',
+                {
+                    method: 'GET'
+                },
+                {
+                    onRetry: params => {
+                        attempts = params.attempt;
+                        retries++;
+                    }
+                }
+            );
+        } catch (e) {
+            error = e;
+        }
+
+        equal(retries, 1, 'retries');
+        equal(attempts, 1, 'attempts');
+        equal(error instanceof Error, true, 'error instance of error');
+        equal(error.message, 'fetch failed');
+        equal(error.cause.code, 'ENOTFOUND');
     });
 
     await test('should abort while waiting if signal notify an abort', async () => {
         const nockScope = nock('https://test.com')
             .get('/test')
             .times(4)
-            .replyWithError(new Error('Network error'));
+            .replyWithError(new FetchError('ECONNREFUSED'));
         const fetchWithRetries = buildFetchWithRetries({
             maxRetries: 1,
             initialDelay: 10000,

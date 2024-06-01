@@ -53,12 +53,11 @@ export function buildFetchWithRetries(
         } = {}
     ): Promise<Response> {
         const { onRetry } = options;
-        const signal = requestInit.signal;
+        const { signal } = requestInit;
         let attempt = 0;
         let errorRetries = 0;
         let rateLimitRetries = 0;
         let retry = false;
-        let rateLimitRetry = false;
         let response: Response | null = null;
         let error: any = null; // eslint-disable-line @typescript-eslint/no-explicit-any
 
@@ -78,7 +77,10 @@ export function buildFetchWithRetries(
             } catch (e) {
                 if ((e as { type: string }).type === 'aborted') {
                     // do nothing
-                } else if (!hasReachedMaxRetries(errorRetries)) {
+                } else if (
+                    isErrorThatHaveToBeRetried(e) &&
+                    !hasReachedMaxRetries(errorRetries)
+                ) {
                     error = e;
                 } else {
                     signal?.removeEventListener('abort', setAborted);
@@ -86,14 +88,14 @@ export function buildFetchWithRetries(
                 }
             }
 
-            rateLimitRetry =
+            const rateLimitRetry =
                 response !== null &&
                 isRateLimitRetry(response) &&
                 !hasReachedRateLimitMaxRetries(rateLimitRetries);
             retry =
                 error ||
                 (response !== null &&
-                    isErrorThatHaveToBeRetried(response) &&
+                    isResponseThatHaveToBeRetried(response) &&
                     !hasReachedMaxRetries(errorRetries)) ||
                 rateLimitRetry;
 
@@ -124,7 +126,7 @@ export function buildFetchWithRetries(
             signal?.throwIfAborted();
         }
 
-        return response as any; // TODO: fix this any
+        return response as Response;
     }
 
     return fetchWithRetries;
@@ -172,8 +174,33 @@ function getXRateLimitResetFromHeader(response: Response): number {
     return parseInt(response.headers.get('X-RateLimit-Reset') || '', 10);
 }
 
-function isErrorThatHaveToBeRetried(response: Response): boolean {
-    return [408, 425, 429, 500, 502, 503, 504].includes(response.status);
+function isResponseThatHaveToBeRetried(response: Response): boolean {
+    return (
+        !response.ok &&
+        [408, 425, 429, 500, 502, 503, 504].includes(response.status)
+    );
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function isErrorThatHaveToBeRetried(error: any): boolean {
+    return (
+        error?.cause?.code &&
+        [
+            'ENOTFOUND',
+            'ECONNREFUSED',
+            'ECONNRESET',
+            'ETIMEDOUT',
+            'EPIPE',
+            'EAI_AGAIN',
+            'EHOSTDOWN',
+            'EHOSTUNREACH',
+            'EHOSTUNREACH',
+            'ENETDOWN',
+            'ENETRESET',
+            'ENETUNREACH',
+            'ECONNABORTED'
+        ].includes(error.cause.code)
+    );
 }
 
 function wait(

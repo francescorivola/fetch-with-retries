@@ -1,3 +1,5 @@
+import { RETRY_ERROR_CODES, RETRY_STATUS_CODES } from './retry-codes';
+
 export type OnRetry = {
     response: Response | null;
     error?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -175,32 +177,12 @@ function getXRateLimitResetFromHeader(response: Response): number {
 }
 
 function isResponseThatHaveToBeRetried(response: Response): boolean {
-    return (
-        !response.ok &&
-        [408, 425, 429, 500, 502, 503, 504].includes(response.status)
-    );
+    return !response.ok && RETRY_STATUS_CODES.includes(response.status);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function isErrorThatHaveToBeRetried(error: any): boolean {
-    return (
-        error?.cause?.code &&
-        [
-            'ENOTFOUND',
-            'ECONNREFUSED',
-            'ECONNRESET',
-            'ETIMEDOUT',
-            'EPIPE',
-            'EAI_AGAIN',
-            'EHOSTDOWN',
-            'EHOSTUNREACH',
-            'EHOSTUNREACH',
-            'ENETDOWN',
-            'ENETRESET',
-            'ENETUNREACH',
-            'ECONNABORTED'
-        ].includes(error.cause.code)
-    );
+    return error?.cause?.code && RETRY_ERROR_CODES.includes(error.cause.code);
 }
 
 function wait(

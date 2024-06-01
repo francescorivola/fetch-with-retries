@@ -43,7 +43,7 @@ export function buildFetchWithRetries(options: {
         } = {}
     ): Promise<Response> {
         const { onRetry } = options;
-        const signal = requestInit.signal as AbortSignal;
+        const signal = requestInit.signal;
         let attempt = 0;
         let errorRetries = 0;
         let rateLimitRetries = 0;
@@ -128,10 +128,14 @@ export function buildFetchWithRetries(options: {
     }
 
     function getRateLimitDelay(response: Response): number {
-        const retryAfterDelay = getRetryAfterInMilliseconds(response);
-        return retryAfterDelay < rateLimit.maxDelay
-            ? retryAfterDelay
-            : rateLimit.maxDelay;
+        const retryAfter = getRetryAfterFromHeader(response);
+        if (Number.isInteger(retryAfter)) {
+            const delayMs = retryAfter * 1000;
+            return Math.min(delayMs, rateLimit.maxDelay);
+        }
+        const xRateLimitReset = getXRateLimitResetFromHeader(response);
+        const delayMs = xRateLimitReset * 1000 - Date.now();
+        return Math.min(delayMs, rateLimit.maxDelay);
     }
 
     function getDelay(retries: number): number {
@@ -143,17 +147,19 @@ function isRateLimitRetry(response: Response): boolean {
     // We check for 429 and 503 Retry-After header value if set
     // see https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Retry-After
     return (
-        [429, 503].includes(response.status) &&
-        Number.isInteger(getRetryAfterInSeconds(response))
+        ([429, 503].includes(response.status) &&
+            Number.isInteger(getRetryAfterFromHeader(response))) ||
+        (response.status === 429 &&
+            Number.isInteger(getXRateLimitResetFromHeader(response)))
     );
 }
 
-function getRetryAfterInSeconds(response: Response): number {
+function getRetryAfterFromHeader(response: Response): number {
     return parseInt(response.headers.get('Retry-After') || '', 10);
 }
 
-function getRetryAfterInMilliseconds(response: Response): number {
-    return getRetryAfterInSeconds(response) * 1000;
+function getXRateLimitResetFromHeader(response: Response): number {
+    return parseInt(response.headers.get('X-RateLimit-Reset') || '', 10);
 }
 
 function isErrorThatHaveToBeRetried(response: Response): boolean {

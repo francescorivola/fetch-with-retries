@@ -1,7 +1,7 @@
 import * as nock from 'nock';
 import { describe, beforeEach, afterEach, test } from 'node:test';
 import { equal, deepStrictEqual } from 'node:assert';
-import { buildFetchWithRetries } from '../src/fetch-with-retry';
+import { buildFetchWithRetries } from '../src/fetch-with-retries';
 
 const retryStatusCodes = [408, 425, 429, 500, 502, 503, 504];
 
@@ -222,6 +222,62 @@ describe('fetch-with-retries', async () => {
             equal(nockScope.isDone(), true);
         });
     }
+
+    await test(`should return the response after retrying 10 times 429 http status code response with X-RateLimit-Reset header`, async () => {
+        const nockScope = nock('https://test.com')
+            .get('/test')
+            .times(10)
+            .reply(
+                429,
+                { message: 'error' },
+                {
+                    'X-RateLimit-Reset': Math.floor(
+                        new Date().getTime() / 1000
+                    ).toString()
+                }
+            )
+            .get('/test')
+            .reply(200, { message: 'ok' });
+        const fetchWithRetries = buildFetchWithRetries({
+            maxRetries: 3,
+            initialDelay: 0,
+            factor: 2,
+            rateLimit: {
+                maxRetries: 10,
+                maxDelay: 60_000
+            }
+        });
+        let lastRetryIsRateLimitRetry;
+        let retries = 0;
+        let attempts = 0;
+
+        const response = await fetchWithRetries(
+            'https://test.com/test',
+            {
+                method: 'GET'
+            },
+            {
+                onRetry: params => {
+                    attempts = params.attempt;
+                    lastRetryIsRateLimitRetry = params.rateLimitRetry;
+                    retries++;
+                }
+            }
+        );
+
+        equal(retries, 10, 'retries');
+        equal(attempts, 10, 'attempts');
+        equal(
+            lastRetryIsRateLimitRetry,
+            true,
+            'last retry is rate limit retry'
+        );
+        equal(response.ok, true);
+        equal(response.status, 200);
+        const body = await response.json();
+        deepStrictEqual(body, { message: 'ok' });
+        equal(nockScope.isDone(), true);
+    });
 
     await test('should return the response if ok after retrying 3 times network errors', async () => {
         const nockScope = nock('https://test.com')

@@ -8,7 +8,7 @@
     },
     "scripts": {
         "test": "node --require ts-node/register --test --watch test/*.spec.ts",
-        "test-ci": "c8 node --require ts-node/register --test test/*.spec.ts",
+        "test-ci": "c8 --reporter=lcov node --require ts-node/register --test test/*.spec.ts",
         "build": "tsc -p tsconfig.json",
         "build-watch": "tsc -p tsconfig.json --watch",
         "format": "prettier --check **/*.ts",

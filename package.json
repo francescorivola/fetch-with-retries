@@ -11,7 +11,7 @@
         "test-ci": "c8 node --require ts-node/register --test test/*.spec.ts",
         "build": "tsc -p tsconfig.json",
         "build-watch": "tsc -p tsconfig.json --watch",
-        "format": "prettier --write **/*.ts",
+        "format": "prettier --check **/*.ts",
         "lint": "eslint './**/*.ts'"
     },
     "author": "francescorivola",

@@ -1,7 +1,7 @@
 {
     "name": "fetch-with-retries",
     "version": "1.0.0",
-    "description": "Simple lib that adds retries out of the box to native node",
+    "description": "Simple and opinionated lib that adds retries out of the box to native Node.js fetch",
     "main": "build/index.js",
     "engines": {
         "node": ">=20"

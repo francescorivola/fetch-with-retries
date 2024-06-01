@@ -30,4 +30,4 @@ jobs:
     - run: npm run build
     - run: npm run lint
     - run: npm run format
-    - run: npm test
+    - run: npm run test-ci

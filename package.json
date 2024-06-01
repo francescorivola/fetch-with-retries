@@ -14,6 +14,11 @@
         "format": "prettier --check **/*.ts",
         "lint": "eslint './**/*.ts'"
     },
+    "keywords": [
+        "fetch",
+        "retry",
+        "lib"
+    ],
     "author": "francescorivola",
     "license": "MIT",
     "devDependencies": {

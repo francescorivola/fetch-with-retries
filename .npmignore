@@ -1,0 +1,8 @@
+node_modules/
+src/
+test/
+coverage/
+tsconfig.json
+.gitignore
+eslint.config.mjs
+.prettierrc.json

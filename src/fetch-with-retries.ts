@@ -18,15 +18,25 @@ export type FetchWithRetries = (
  * A lib that provides an easy way to retry http requests due to errors and rate limits.
  * It also provides an abort system to allow graceful shutdown when waiting for long retries.
  */
-export function buildFetchWithRetries(options: {
-    maxRetries: number;
-    initialDelay: number;
-    factor: number;
-    rateLimit: {
+export function buildFetchWithRetries(
+    options: {
         maxRetries: number;
-        maxDelay: number;
-    };
-}): FetchWithRetries {
+        initialDelay: number;
+        factor: number;
+        rateLimit: {
+            maxRetries: number;
+            maxDelay: number;
+        };
+    } = {
+        maxRetries: 3,
+        initialDelay: 1000,
+        factor: 2,
+        rateLimit: {
+            maxRetries: 10,
+            maxDelay: 60_000
+        }
+    }
+): FetchWithRetries {
     const { maxRetries, initialDelay, factor, rateLimit } = options;
 
     /**

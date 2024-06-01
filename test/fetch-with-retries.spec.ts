@@ -1,7 +1,7 @@
 import * as nock from 'nock';
 import { describe, beforeEach, afterEach, test } from 'node:test';
 import { equal, deepStrictEqual } from 'node:assert';
-import { buildFetchWithRetries } from '../src/fetch-with-retries';
+import { buildFetchWithRetries } from '../src/index';
 
 const retryStatusCodes = [408, 425, 429, 500, 502, 503, 504];
 
@@ -19,15 +19,7 @@ describe('fetch-with-retries', async () => {
         const nockScope = nock('https://test.com')
             .get('/test')
             .reply(200, { message: 'ok' });
-        const fetchWithRetries = buildFetchWithRetries({
-            maxRetries: 1,
-            initialDelay: 1000,
-            factor: 2,
-            rateLimit: {
-                maxRetries: 10,
-                maxDelay: 60_000
-            }
-        });
+        const fetchWithRetries = buildFetchWithRetries();
         let retries = 0;
 
         const response = await fetchWithRetries(

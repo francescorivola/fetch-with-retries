@@ -6,7 +6,7 @@ It's designed to handle both network errors and service issues, such as rate lim
 [![Npm Version](https://badge.fury.io/js/fetch-with-retries.svg?v=1)](https://www.npmjs.com/package/fetch-with-retries)
 [![Actions Status](https://github.com/francescorivola/fetch-with-retries/workflows/Node.js%20CI/badge.svg)](https://github.com/francescorivola/fetch-with-retries/actions)
 [![CodeFactor](https://www.codefactor.io/repository/github/francescorivola/fetch-with-retries/badge)](https://www.codefactor.io/repository/github/francescorivola/fetch-with-retries)
-[![codecov](https://codecov.io/gh/francescorivola/fetch-with-retries/branch/master/graph/badge.svg?v=1)](https://codecov.io/gh/francescorivola/fetch-with-retries)
+[![codecov](https://codecov.io/gh/francescorivola/fetch-with-retries/branch/main/graph/badge.svg)](https://codecov.io/gh/francescorivola/fetch-with-retries)
 [![Dependabot](https://badgen.net/badge/Dependabot/enabled/green?icon=dependabot)](https://dependabot.com/)
 
 ## Features

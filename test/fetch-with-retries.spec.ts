@@ -1,7 +1,7 @@
 import * as nock from 'nock';
 import { describe, beforeEach, afterEach, test } from 'node:test';
 import { equal, deepStrictEqual } from 'node:assert';
-import { buildFetchWithRetries } from '../src/index';
+import { fetchWithRetries } from '../src/index';
 
 const retryStatusCodes = [408, 425, 429, 500, 502, 503, 504];
 
@@ -28,20 +28,16 @@ describe('fetch-with-retries', async () => {
         const nockScope = nock('https://test.com')
             .get('/test')
             .reply(200, { message: 'ok' });
-        const fetchWithRetries = buildFetchWithRetries();
         let retries = 0;
 
-        const response = await fetchWithRetries(
-            'https://test.com/test',
-            {
-                method: 'GET'
-            },
-            {
+        const response = await fetchWithRetries('https://test.com/test', {
+            method: 'GET',
+            retryOptions: {
                 onRetry: () => {
                     retries++;
                 }
             }
-        );
+        });
 
         equal(retries, 0, 'retries');
         equal(response.ok, true);
@@ -54,28 +50,17 @@ describe('fetch-with-retries', async () => {
         const nockScope = nock('https://test.com')
             .get('/test')
             .reply(400, { message: 'bad request' });
-        const fetchWithRetries = buildFetchWithRetries({
-            maxRetries: 1,
-            initialDelay: 1000,
-            factor: 2,
-            rateLimit: {
-                maxRetries: 10,
-                maxDelay: 60_000
-            }
-        });
         let retries = 0;
 
-        const response = await fetchWithRetries(
-            'https://test.com/test',
-            {
-                method: 'GET'
-            },
-            {
+        const response = await fetchWithRetries('https://test.com/test', {
+            method: 'GET',
+            retryOptions: {
                 onRetry: () => {
                     retries++;
-                }
+                },
+                maxRetries: 1
             }
-        );
+        });
 
         equal(retries, 0, 'retries');
         equal(response.ok, false);
@@ -92,30 +77,19 @@ describe('fetch-with-retries', async () => {
                 .reply(status, { message: 'error' })
                 .get('/test')
                 .reply(200, { message: 'ok' });
-            const fetchWithRetries = buildFetchWithRetries({
-                maxRetries: 3,
-                initialDelay: 0,
-                factor: 2,
-                rateLimit: {
-                    maxRetries: 10,
-                    maxDelay: 60_000
-                }
-            });
             let retries = 0;
             let attempts = 0;
 
-            const response = await fetchWithRetries(
-                'https://test.com/test',
-                {
-                    method: 'GET'
-                },
-                {
+            const response = await fetchWithRetries('https://test.com/test', {
+                method: 'GET',
+                retryOptions: {
                     onRetry: params => {
                         attempts = params.attempt;
                         retries++;
-                    }
+                    },
+                    initialDelay: 0
                 }
-            );
+            });
 
             equal(retries, 3, 'retries');
             equal(attempts, 3, 'attempts');
@@ -132,32 +106,21 @@ describe('fetch-with-retries', async () => {
                 .get('/test')
                 .times(4)
                 .reply(status, { message: 'error' });
-            const fetchWithRetries = buildFetchWithRetries({
-                maxRetries: 3,
-                initialDelay: 0,
-                factor: 2,
-                rateLimit: {
-                    maxRetries: 10,
-                    maxDelay: 60_000
-                }
-            });
             let lastRetryIsRateLimitRetry;
             let retries = 0;
             let attempts = 0;
 
-            const response = await fetchWithRetries(
-                'https://test.com/test',
-                {
-                    method: 'GET'
-                },
-                {
+            const response = await fetchWithRetries('https://test.com/test', {
+                method: 'GET',
+                retryOptions: {
                     onRetry: params => {
                         attempts = params.attempt;
                         lastRetryIsRateLimitRetry = params.rateLimitRetry;
                         retries++;
-                    }
+                    },
+                    initialDelay: 0
                 }
-            );
+            });
 
             equal(retries, 3, 'retries');
             equal(attempts, 3, 'attempts');
@@ -182,32 +145,21 @@ describe('fetch-with-retries', async () => {
                 .reply(status, { message: 'error' }, { 'Retry-After': '0' })
                 .get('/test')
                 .reply(200, { message: 'ok' });
-            const fetchWithRetries = buildFetchWithRetries({
-                maxRetries: 3,
-                initialDelay: 0,
-                factor: 2,
-                rateLimit: {
-                    maxRetries: 10,
-                    maxDelay: 60_000
-                }
-            });
             let lastRetryIsRateLimitRetry;
             let retries = 0;
             let attempts = 0;
 
-            const response = await fetchWithRetries(
-                'https://test.com/test',
-                {
-                    method: 'GET'
-                },
-                {
+            const response = await fetchWithRetries('https://test.com/test', {
+                method: 'GET',
+                retryOptions: {
                     onRetry: params => {
                         attempts = params.attempt;
                         lastRetryIsRateLimitRetry = params.rateLimitRetry;
                         retries++;
-                    }
+                    },
+                    initialDelay: 0
                 }
-            );
+            });
 
             equal(retries, 10, 'retries');
             equal(attempts, 10, 'attempts');
@@ -239,32 +191,21 @@ describe('fetch-with-retries', async () => {
             )
             .get('/test')
             .reply(200, { message: 'ok' });
-        const fetchWithRetries = buildFetchWithRetries({
-            maxRetries: 3,
-            initialDelay: 0,
-            factor: 2,
-            rateLimit: {
-                maxRetries: 10,
-                maxDelay: 60_000
-            }
-        });
         let lastRetryIsRateLimitRetry;
         let retries = 0;
         let attempts = 0;
 
-        const response = await fetchWithRetries(
-            'https://test.com/test',
-            {
-                method: 'GET'
-            },
-            {
+        const response = await fetchWithRetries('https://test.com/test', {
+            method: 'GET',
+            retryOptions: {
                 onRetry: params => {
                     attempts = params.attempt;
                     lastRetryIsRateLimitRetry = params.rateLimitRetry;
                     retries++;
-                }
+                },
+                initialDelay: 0
             }
-        );
+        });
 
         equal(retries, 10, 'retries');
         equal(attempts, 10, 'attempts');
@@ -287,30 +228,19 @@ describe('fetch-with-retries', async () => {
             .replyWithError(new FetchError('ENOTFOUND'))
             .get('/test')
             .reply(200, { message: 'ok' });
-        const fetchWithRetries = buildFetchWithRetries({
-            maxRetries: 3,
-            initialDelay: 0,
-            factor: 2,
-            rateLimit: {
-                maxRetries: 10,
-                maxDelay: 60_000
-            }
-        });
         let retries = 0;
         let attempts = 0;
 
-        const response = await fetchWithRetries(
-            'https://test.com/test',
-            {
-                method: 'GET'
-            },
-            {
+        const response = await fetchWithRetries('https://test.com/test', {
+            method: 'GET',
+            retryOptions: {
                 onRetry: params => {
                     attempts = params.attempt;
                     retries++;
-                }
+                },
+                initialDelay: 0
             }
-        );
+        });
 
         equal(retries, 3, 'retries');
         equal(attempts, 3, 'attempts');
@@ -321,22 +251,18 @@ describe('fetch-with-retries', async () => {
     });
 
     await test('should throw the error without retry if malformed uri', async () => {
-        const fetchWithRetries = buildFetchWithRetries();
         let error: any = null; // eslint-disable-line @typescript-eslint/no-explicit-any
         let retries = 0;
 
         try {
-            await fetchWithRetries(
-                'this-is-not-an-uri',
-                {
-                    method: 'GET'
-                },
-                {
+            await fetchWithRetries('this-is-not-an-uri', {
+                method: 'GET',
+                retryOptions: {
                     onRetry: () => {
                         retries++;
                     }
                 }
-            );
+            });
         } catch (e) {
             error = e;
         }
@@ -351,32 +277,21 @@ describe('fetch-with-retries', async () => {
             .get('/test')
             .times(4)
             .replyWithError(new FetchError('ECONNRESET'));
-        const fetchWithRetries = buildFetchWithRetries({
-            maxRetries: 3,
-            initialDelay: 0,
-            factor: 2,
-            rateLimit: {
-                maxRetries: 10,
-                maxDelay: 60_000
-            }
-        });
         let retries = 0;
         let attempts = 0;
         let error: any = null; // eslint-disable-line @typescript-eslint/no-explicit-any
 
         try {
-            await fetchWithRetries(
-                'https://test.com/test',
-                {
-                    method: 'GET'
-                },
-                {
+            await fetchWithRetries('https://test.com/test', {
+                method: 'GET',
+                retryOptions: {
                     onRetry: params => {
                         attempts = params.attempt;
                         retries++;
-                    }
+                    },
+                    initialDelay: 0
                 }
-            );
+            });
         } catch (e) {
             error = e;
         }
@@ -394,32 +309,22 @@ describe('fetch-with-retries', async () => {
 
     await test('should throw the error after retrying network errors (real one)', async () => {
         nock.enableNetConnect();
-        const fetchWithRetries = buildFetchWithRetries({
-            maxRetries: 1,
-            initialDelay: 0,
-            factor: 2,
-            rateLimit: {
-                maxRetries: 10,
-                maxDelay: 60_000
-            }
-        });
         let retries = 0;
         let attempts = 0;
         let error: any = null; // eslint-disable-line @typescript-eslint/no-explicit-any
 
         try {
-            await fetchWithRetries(
-                'https://this-url-does-not-exist.com',
-                {
-                    method: 'GET'
-                },
-                {
+            await fetchWithRetries('https://this-url-does-not-exist.com', {
+                method: 'GET',
+                retryOptions: {
                     onRetry: params => {
                         attempts = params.attempt;
                         retries++;
-                    }
+                    },
+                    maxRetries: 1,
+                    initialDelay: 0
                 }
-            );
+            });
         } catch (e) {
             error = e;
         }
@@ -436,33 +341,22 @@ describe('fetch-with-retries', async () => {
             .get('/test')
             .times(4)
             .replyWithError(new FetchError('ECONNREFUSED'));
-        const fetchWithRetries = buildFetchWithRetries({
-            maxRetries: 1,
-            initialDelay: 10000,
-            factor: 2,
-            rateLimit: {
-                maxRetries: 10,
-                maxDelay: 60_000
-            }
-        });
         let retries = 0;
         let error: any = null; // eslint-disable-line @typescript-eslint/no-explicit-any
         const controller = new AbortController();
         const abortError = new Error('Boom, is aborted');
         try {
             setTimeout(() => controller.abort(abortError), 50);
-            await fetchWithRetries(
-                'https://test.com/test',
-                {
-                    method: 'GET',
-                    signal: controller.signal
-                },
-                {
+            await fetchWithRetries('https://test.com/test', {
+                method: 'GET',
+                signal: controller.signal,
+                retryOptions: {
                     onRetry: () => {
                         retries++;
-                    }
+                    },
+                    initialDelay: 10_000
                 }
-            );
+            });
         } catch (e) {
             error = e;
         }
@@ -478,15 +372,6 @@ describe('fetch-with-retries', async () => {
             .get('/test')
             .delay(200)
             .reply(200, { success: true });
-        const fetchWithRetries = buildFetchWithRetries({
-            maxRetries: 1,
-            initialDelay: 10000,
-            factor: 2,
-            rateLimit: {
-                maxRetries: 10,
-                maxDelay: 60_000
-            }
-        });
         let retries = 0;
         let error: any = null; // eslint-disable-line @typescript-eslint/no-explicit-any
         const controller = new AbortController();
@@ -494,18 +379,16 @@ describe('fetch-with-retries', async () => {
 
         try {
             setTimeout(() => controller.abort(abortError), 0);
-            await fetchWithRetries(
-                'https://test.com/test',
-                {
-                    method: 'GET',
-                    signal: controller.signal
-                },
-                {
+            await fetchWithRetries('https://test.com/test', {
+                method: 'GET',
+                signal: controller.signal,
+                retryOptions: {
                     onRetry: () => {
                         retries++;
-                    }
+                    },
+                    initialDelay: 10_000
                 }
-            );
+            });
         } catch (e) {
             error = e;
         }

@@ -1,4 +1,22 @@
+/**
+ * A lib that provides an easy way to retry http requests due to errors and rate limits.
+ * It also provides an abort system to allow graceful shutdown when waiting for long retries.
+ */
+
 import { RETRY_ERROR_CODES, RETRY_STATUS_CODES } from './retry-codes';
+
+export type Options = RequestInit & { retryOptions?: Partial<RetryOptions> };
+
+type RetryOptions = {
+    onRetry?: (params: OnRetry) => void;
+    maxRetries: number;
+    initialDelay: number;
+    factor: number;
+    rateLimit: {
+        maxRetries: number;
+        maxDelay: number;
+    };
+};
 
 export type OnRetry = {
     response: Response | null;
@@ -8,130 +26,92 @@ export type OnRetry = {
     rateLimitRetry: boolean;
 };
 
-export type FetchWithRetries = (
-    url: string,
-    requestInit: RequestInit,
-    options: {
-        onRetry?: (params: OnRetry) => void;
-    }
-) => Promise<Response>;
-
 /**
- * A lib that provides an easy way to retry http requests due to errors and rate limits.
- * It also provides an abort system to allow graceful shutdown when waiting for long retries.
+ * @param url fetch url
+ * @param {Options} options fetch options extended with an additional retryOptions field. The retryOptions field is optional and a default value will be applied to each subfield if not provided.
+ * @returns {Promise<Response>} promise of a response
  */
-export function buildFetchWithRetries(
-    options: {
-        maxRetries: number;
-        initialDelay: number;
-        factor: number;
-        rateLimit: {
-            maxRetries: number;
-            maxDelay: number;
-        };
-    } = {
-        maxRetries: 3,
-        initialDelay: 1000,
-        factor: 2,
-        rateLimit: {
-            maxRetries: 10,
-            maxDelay: 60_000
-        }
+export async function fetchWithRetries(
+    url: string,
+    options: Options
+): Promise<Response> {
+    const { retryOptions, ...requestInit } = options;
+    const { maxRetries, initialDelay, factor, rateLimit, onRetry } =
+        mergeWithDefaultOptions(retryOptions);
+    const { signal } = requestInit;
+    let attempt = 0;
+    let errorRetries = 0;
+    let rateLimitRetries = 0;
+    let retry = false;
+    let response: Response | null = null;
+    let error: any = null; // eslint-disable-line @typescript-eslint/no-explicit-any
+
+    let aborted = false;
+    function setAborted() {
+        aborted = true;
     }
-): FetchWithRetries {
-    const { maxRetries, initialDelay, factor, rateLimit } = options;
+    signal?.addEventListener('abort', setAborted);
 
-    /**
-     * @param url fetch url
-     * @param requestInit fetch request options
-     * @param options retry options
-     * @returns promise of a response
-     */
-    async function fetchWithRetries(
-        url: string,
-        requestInit: RequestInit,
-        options: {
-            onRetry?: (params: OnRetry) => void;
-        } = {}
-    ): Promise<Response> {
-        const { onRetry } = options;
-        const { signal } = requestInit;
-        let attempt = 0;
-        let errorRetries = 0;
-        let rateLimitRetries = 0;
-        let retry = false;
-        let response: Response | null = null;
-        let error: any = null; // eslint-disable-line @typescript-eslint/no-explicit-any
+    do {
+        response = null;
+        error = null;
+        attempt++;
 
-        let aborted = false;
-        function setAborted() {
-            aborted = true;
-        }
-        signal?.addEventListener('abort', setAborted);
-
-        do {
-            response = null;
-            error = null;
-            attempt++;
-
-            try {
-                response = await fetch(url, requestInit);
-            } catch (e) {
-                if ((e as { type: string }).type === 'aborted') {
-                    // do nothing
-                } else if (
-                    isErrorThatHaveToBeRetried(e) &&
-                    !hasReachedMaxRetries(errorRetries)
-                ) {
-                    error = e;
-                } else {
-                    signal?.removeEventListener('abort', setAborted);
-                    throw e;
-                }
+        try {
+            response = await fetch(url, requestInit);
+        } catch (e) {
+            if ((e as { type: string }).type === 'aborted') {
+                // do nothing
+            } else if (
+                isErrorThatHaveToBeRetried(e) &&
+                !hasReachedMaxRetries(errorRetries)
+            ) {
+                error = e;
+            } else {
+                signal?.removeEventListener('abort', setAborted);
+                throw e;
             }
-
-            const rateLimitRetry =
-                response !== null &&
-                isRateLimitRetry(response) &&
-                !hasReachedRateLimitMaxRetries(rateLimitRetries);
-            retry =
-                error ||
-                (response !== null &&
-                    isResponseThatHaveToBeRetried(response) &&
-                    !hasReachedMaxRetries(errorRetries)) ||
-                rateLimitRetry;
-
-            if (retry && !aborted) {
-                let delay: number;
-                if (rateLimitRetry && response !== null) {
-                    rateLimitRetries++;
-                    delay = getRateLimitDelay(response);
-                } else {
-                    errorRetries++;
-                    delay = getDelay(errorRetries);
-                }
-                if (typeof onRetry === 'function') {
-                    onRetry({
-                        error,
-                        response,
-                        attempt,
-                        delay,
-                        rateLimitRetry
-                    });
-                }
-                await wait(delay, signal);
-            }
-        } while (retry && !aborted);
-
-        signal?.removeEventListener('abort', setAborted);
-        if (aborted) {
-            signal?.throwIfAborted();
         }
 
-        return response!;
+        const rateLimitRetry =
+            response !== null &&
+            isRateLimitRetry(response) &&
+            !hasReachedRateLimitMaxRetries(rateLimitRetries);
+        retry =
+            error ||
+            (response !== null &&
+                isResponseThatHaveToBeRetried(response) &&
+                !hasReachedMaxRetries(errorRetries)) ||
+            rateLimitRetry;
+
+        if (retry && !aborted) {
+            let delay: number;
+            if (rateLimitRetry && response !== null) {
+                rateLimitRetries++;
+                delay = getRateLimitDelay(response);
+            } else {
+                errorRetries++;
+                delay = getDelay(errorRetries);
+            }
+            if (typeof onRetry === 'function') {
+                onRetry({
+                    error,
+                    response,
+                    attempt,
+                    delay,
+                    rateLimitRetry
+                });
+            }
+            await wait(delay, signal);
+        }
+    } while (retry && !aborted);
+
+    signal?.removeEventListener('abort', setAborted);
+    if (aborted) {
+        signal?.throwIfAborted();
     }
 
-    return fetchWithRetries;
+    return response!;
 
     function hasReachedMaxRetries(retries: number): boolean {
         return retries >= maxRetries;
@@ -154,6 +134,22 @@ export function buildFetchWithRetries(
 
     function getDelay(retries: number): number {
         return initialDelay * Math.pow(factor, retries);
+    }
+
+    function mergeWithDefaultOptions(
+        options: Partial<RetryOptions> = {}
+    ): RetryOptions {
+        return {
+            maxRetries: 3,
+            initialDelay: 1000,
+            factor: 2,
+            rateLimit: {
+                maxRetries: 10,
+                maxDelay: 60_000,
+                ...options.rateLimit
+            },
+            ...options
+        };
     }
 }
 

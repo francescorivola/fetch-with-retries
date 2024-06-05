@@ -1,7 +1,7 @@
 import * as nock from 'nock';
 import { describe, beforeEach, afterEach, test } from 'node:test';
 import { equal, deepStrictEqual } from 'node:assert';
-import { buildFetchWithRetries } from '../src/index';
+import { fetchWithRetries } from '../src/index';
 
 const retryStatusCodes = [408, 425, 429, 500, 502, 503, 504];
 
@@ -28,7 +28,6 @@ describe('fetch-with-retries', async () => {
         const nockScope = nock('https://test.com')
             .get('/test')
             .reply(200, { message: 'ok' });
-        const fetchWithRetries = buildFetchWithRetries();
         let retries = 0;
 
         const response = await fetchWithRetries(
@@ -54,15 +53,6 @@ describe('fetch-with-retries', async () => {
         const nockScope = nock('https://test.com')
             .get('/test')
             .reply(400, { message: 'bad request' });
-        const fetchWithRetries = buildFetchWithRetries({
-            maxRetries: 1,
-            initialDelay: 1000,
-            factor: 2,
-            rateLimit: {
-                maxRetries: 10,
-                maxDelay: 60_000
-            }
-        });
         let retries = 0;
 
         const response = await fetchWithRetries(
@@ -73,7 +63,8 @@ describe('fetch-with-retries', async () => {
             {
                 onRetry: () => {
                     retries++;
-                }
+                },
+                maxRetries: 1
             }
         );
 
@@ -92,15 +83,6 @@ describe('fetch-with-retries', async () => {
                 .reply(status, { message: 'error' })
                 .get('/test')
                 .reply(200, { message: 'ok' });
-            const fetchWithRetries = buildFetchWithRetries({
-                maxRetries: 3,
-                initialDelay: 0,
-                factor: 2,
-                rateLimit: {
-                    maxRetries: 10,
-                    maxDelay: 60_000
-                }
-            });
             let retries = 0;
             let attempts = 0;
 
@@ -113,7 +95,8 @@ describe('fetch-with-retries', async () => {
                     onRetry: params => {
                         attempts = params.attempt;
                         retries++;
-                    }
+                    },
+                    initialDelay: 0
                 }
             );
 
@@ -132,15 +115,6 @@ describe('fetch-with-retries', async () => {
                 .get('/test')
                 .times(4)
                 .reply(status, { message: 'error' });
-            const fetchWithRetries = buildFetchWithRetries({
-                maxRetries: 3,
-                initialDelay: 0,
-                factor: 2,
-                rateLimit: {
-                    maxRetries: 10,
-                    maxDelay: 60_000
-                }
-            });
             let lastRetryIsRateLimitRetry;
             let retries = 0;
             let attempts = 0;
@@ -155,7 +129,8 @@ describe('fetch-with-retries', async () => {
                         attempts = params.attempt;
                         lastRetryIsRateLimitRetry = params.rateLimitRetry;
                         retries++;
-                    }
+                    },
+                    initialDelay: 0
                 }
             );
 
@@ -182,15 +157,6 @@ describe('fetch-with-retries', async () => {
                 .reply(status, { message: 'error' }, { 'Retry-After': '0' })
                 .get('/test')
                 .reply(200, { message: 'ok' });
-            const fetchWithRetries = buildFetchWithRetries({
-                maxRetries: 3,
-                initialDelay: 0,
-                factor: 2,
-                rateLimit: {
-                    maxRetries: 10,
-                    maxDelay: 60_000
-                }
-            });
             let lastRetryIsRateLimitRetry;
             let retries = 0;
             let attempts = 0;
@@ -205,7 +171,8 @@ describe('fetch-with-retries', async () => {
                         attempts = params.attempt;
                         lastRetryIsRateLimitRetry = params.rateLimitRetry;
                         retries++;
-                    }
+                    },
+                    initialDelay: 0
                 }
             );
 
@@ -239,15 +206,6 @@ describe('fetch-with-retries', async () => {
             )
             .get('/test')
             .reply(200, { message: 'ok' });
-        const fetchWithRetries = buildFetchWithRetries({
-            maxRetries: 3,
-            initialDelay: 0,
-            factor: 2,
-            rateLimit: {
-                maxRetries: 10,
-                maxDelay: 60_000
-            }
-        });
         let lastRetryIsRateLimitRetry;
         let retries = 0;
         let attempts = 0;
@@ -262,7 +220,8 @@ describe('fetch-with-retries', async () => {
                     attempts = params.attempt;
                     lastRetryIsRateLimitRetry = params.rateLimitRetry;
                     retries++;
-                }
+                },
+                initialDelay: 0
             }
         );
 
@@ -287,15 +246,6 @@ describe('fetch-with-retries', async () => {
             .replyWithError(new FetchError('ENOTFOUND'))
             .get('/test')
             .reply(200, { message: 'ok' });
-        const fetchWithRetries = buildFetchWithRetries({
-            maxRetries: 3,
-            initialDelay: 0,
-            factor: 2,
-            rateLimit: {
-                maxRetries: 10,
-                maxDelay: 60_000
-            }
-        });
         let retries = 0;
         let attempts = 0;
 
@@ -308,7 +258,8 @@ describe('fetch-with-retries', async () => {
                 onRetry: params => {
                     attempts = params.attempt;
                     retries++;
-                }
+                },
+                initialDelay: 0
             }
         );
 
@@ -321,7 +272,6 @@ describe('fetch-with-retries', async () => {
     });
 
     await test('should throw the error without retry if malformed uri', async () => {
-        const fetchWithRetries = buildFetchWithRetries();
         let error: any = null; // eslint-disable-line @typescript-eslint/no-explicit-any
         let retries = 0;
 
@@ -351,15 +301,6 @@ describe('fetch-with-retries', async () => {
             .get('/test')
             .times(4)
             .replyWithError(new FetchError('ECONNRESET'));
-        const fetchWithRetries = buildFetchWithRetries({
-            maxRetries: 3,
-            initialDelay: 0,
-            factor: 2,
-            rateLimit: {
-                maxRetries: 10,
-                maxDelay: 60_000
-            }
-        });
         let retries = 0;
         let attempts = 0;
         let error: any = null; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -374,7 +315,8 @@ describe('fetch-with-retries', async () => {
                     onRetry: params => {
                         attempts = params.attempt;
                         retries++;
-                    }
+                    },
+                    initialDelay: 0
                 }
             );
         } catch (e) {
@@ -394,15 +336,6 @@ describe('fetch-with-retries', async () => {
 
     await test('should throw the error after retrying network errors (real one)', async () => {
         nock.enableNetConnect();
-        const fetchWithRetries = buildFetchWithRetries({
-            maxRetries: 1,
-            initialDelay: 0,
-            factor: 2,
-            rateLimit: {
-                maxRetries: 10,
-                maxDelay: 60_000
-            }
-        });
         let retries = 0;
         let attempts = 0;
         let error: any = null; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -417,7 +350,9 @@ describe('fetch-with-retries', async () => {
                     onRetry: params => {
                         attempts = params.attempt;
                         retries++;
-                    }
+                    },
+                    maxRetries: 1,
+                    initialDelay: 0
                 }
             );
         } catch (e) {
@@ -436,15 +371,6 @@ describe('fetch-with-retries', async () => {
             .get('/test')
             .times(4)
             .replyWithError(new FetchError('ECONNREFUSED'));
-        const fetchWithRetries = buildFetchWithRetries({
-            maxRetries: 1,
-            initialDelay: 10000,
-            factor: 2,
-            rateLimit: {
-                maxRetries: 10,
-                maxDelay: 60_000
-            }
-        });
         let retries = 0;
         let error: any = null; // eslint-disable-line @typescript-eslint/no-explicit-any
         const controller = new AbortController();
@@ -460,7 +386,8 @@ describe('fetch-with-retries', async () => {
                 {
                     onRetry: () => {
                         retries++;
-                    }
+                    },
+                    initialDelay: 10_000
                 }
             );
         } catch (e) {
@@ -478,15 +405,6 @@ describe('fetch-with-retries', async () => {
             .get('/test')
             .delay(200)
             .reply(200, { success: true });
-        const fetchWithRetries = buildFetchWithRetries({
-            maxRetries: 1,
-            initialDelay: 10000,
-            factor: 2,
-            rateLimit: {
-                maxRetries: 10,
-                maxDelay: 60_000
-            }
-        });
         let retries = 0;
         let error: any = null; // eslint-disable-line @typescript-eslint/no-explicit-any
         const controller = new AbortController();
@@ -503,7 +421,8 @@ describe('fetch-with-retries', async () => {
                 {
                     onRetry: () => {
                         retries++;
-                    }
+                    },
+                    initialDelay: 10_000
                 }
             );
         } catch (e) {

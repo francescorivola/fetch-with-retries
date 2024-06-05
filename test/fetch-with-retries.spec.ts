@@ -30,17 +30,14 @@ describe('fetch-with-retries', async () => {
             .reply(200, { message: 'ok' });
         let retries = 0;
 
-        const response = await fetchWithRetries(
-            'https://test.com/test',
-            {
-                method: 'GET'
-            },
-            {
+        const response = await fetchWithRetries('https://test.com/test', {
+            method: 'GET',
+            retryOptions: {
                 onRetry: () => {
                     retries++;
                 }
             }
-        );
+        });
 
         equal(retries, 0, 'retries');
         equal(response.ok, true);
@@ -55,18 +52,15 @@ describe('fetch-with-retries', async () => {
             .reply(400, { message: 'bad request' });
         let retries = 0;
 
-        const response = await fetchWithRetries(
-            'https://test.com/test',
-            {
-                method: 'GET'
-            },
-            {
+        const response = await fetchWithRetries('https://test.com/test', {
+            method: 'GET',
+            retryOptions: {
                 onRetry: () => {
                     retries++;
                 },
                 maxRetries: 1
             }
-        );
+        });
 
         equal(retries, 0, 'retries');
         equal(response.ok, false);
@@ -86,19 +80,16 @@ describe('fetch-with-retries', async () => {
             let retries = 0;
             let attempts = 0;
 
-            const response = await fetchWithRetries(
-                'https://test.com/test',
-                {
-                    method: 'GET'
-                },
-                {
+            const response = await fetchWithRetries('https://test.com/test', {
+                method: 'GET',
+                retryOptions: {
                     onRetry: params => {
                         attempts = params.attempt;
                         retries++;
                     },
                     initialDelay: 0
                 }
-            );
+            });
 
             equal(retries, 3, 'retries');
             equal(attempts, 3, 'attempts');
@@ -119,12 +110,9 @@ describe('fetch-with-retries', async () => {
             let retries = 0;
             let attempts = 0;
 
-            const response = await fetchWithRetries(
-                'https://test.com/test',
-                {
-                    method: 'GET'
-                },
-                {
+            const response = await fetchWithRetries('https://test.com/test', {
+                method: 'GET',
+                retryOptions: {
                     onRetry: params => {
                         attempts = params.attempt;
                         lastRetryIsRateLimitRetry = params.rateLimitRetry;
@@ -132,7 +120,7 @@ describe('fetch-with-retries', async () => {
                     },
                     initialDelay: 0
                 }
-            );
+            });
 
             equal(retries, 3, 'retries');
             equal(attempts, 3, 'attempts');
@@ -161,12 +149,9 @@ describe('fetch-with-retries', async () => {
             let retries = 0;
             let attempts = 0;
 
-            const response = await fetchWithRetries(
-                'https://test.com/test',
-                {
-                    method: 'GET'
-                },
-                {
+            const response = await fetchWithRetries('https://test.com/test', {
+                method: 'GET',
+                retryOptions: {
                     onRetry: params => {
                         attempts = params.attempt;
                         lastRetryIsRateLimitRetry = params.rateLimitRetry;
@@ -174,7 +159,7 @@ describe('fetch-with-retries', async () => {
                     },
                     initialDelay: 0
                 }
-            );
+            });
 
             equal(retries, 10, 'retries');
             equal(attempts, 10, 'attempts');
@@ -210,12 +195,9 @@ describe('fetch-with-retries', async () => {
         let retries = 0;
         let attempts = 0;
 
-        const response = await fetchWithRetries(
-            'https://test.com/test',
-            {
-                method: 'GET'
-            },
-            {
+        const response = await fetchWithRetries('https://test.com/test', {
+            method: 'GET',
+            retryOptions: {
                 onRetry: params => {
                     attempts = params.attempt;
                     lastRetryIsRateLimitRetry = params.rateLimitRetry;
@@ -223,7 +205,7 @@ describe('fetch-with-retries', async () => {
                 },
                 initialDelay: 0
             }
-        );
+        });
 
         equal(retries, 10, 'retries');
         equal(attempts, 10, 'attempts');
@@ -249,19 +231,16 @@ describe('fetch-with-retries', async () => {
         let retries = 0;
         let attempts = 0;
 
-        const response = await fetchWithRetries(
-            'https://test.com/test',
-            {
-                method: 'GET'
-            },
-            {
+        const response = await fetchWithRetries('https://test.com/test', {
+            method: 'GET',
+            retryOptions: {
                 onRetry: params => {
                     attempts = params.attempt;
                     retries++;
                 },
                 initialDelay: 0
             }
-        );
+        });
 
         equal(retries, 3, 'retries');
         equal(attempts, 3, 'attempts');
@@ -276,17 +255,14 @@ describe('fetch-with-retries', async () => {
         let retries = 0;
 
         try {
-            await fetchWithRetries(
-                'this-is-not-an-uri',
-                {
-                    method: 'GET'
-                },
-                {
+            await fetchWithRetries('this-is-not-an-uri', {
+                method: 'GET',
+                retryOptions: {
                     onRetry: () => {
                         retries++;
                     }
                 }
-            );
+            });
         } catch (e) {
             error = e;
         }
@@ -306,19 +282,16 @@ describe('fetch-with-retries', async () => {
         let error: any = null; // eslint-disable-line @typescript-eslint/no-explicit-any
 
         try {
-            await fetchWithRetries(
-                'https://test.com/test',
-                {
-                    method: 'GET'
-                },
-                {
+            await fetchWithRetries('https://test.com/test', {
+                method: 'GET',
+                retryOptions: {
                     onRetry: params => {
                         attempts = params.attempt;
                         retries++;
                     },
                     initialDelay: 0
                 }
-            );
+            });
         } catch (e) {
             error = e;
         }
@@ -341,12 +314,9 @@ describe('fetch-with-retries', async () => {
         let error: any = null; // eslint-disable-line @typescript-eslint/no-explicit-any
 
         try {
-            await fetchWithRetries(
-                'https://this-url-does-not-exist.com',
-                {
-                    method: 'GET'
-                },
-                {
+            await fetchWithRetries('https://this-url-does-not-exist.com', {
+                method: 'GET',
+                retryOptions: {
                     onRetry: params => {
                         attempts = params.attempt;
                         retries++;
@@ -354,7 +324,7 @@ describe('fetch-with-retries', async () => {
                     maxRetries: 1,
                     initialDelay: 0
                 }
-            );
+            });
         } catch (e) {
             error = e;
         }
@@ -377,19 +347,16 @@ describe('fetch-with-retries', async () => {
         const abortError = new Error('Boom, is aborted');
         try {
             setTimeout(() => controller.abort(abortError), 50);
-            await fetchWithRetries(
-                'https://test.com/test',
-                {
-                    method: 'GET',
-                    signal: controller.signal
-                },
-                {
+            await fetchWithRetries('https://test.com/test', {
+                method: 'GET',
+                signal: controller.signal,
+                retryOptions: {
                     onRetry: () => {
                         retries++;
                     },
                     initialDelay: 10_000
                 }
-            );
+            });
         } catch (e) {
             error = e;
         }
@@ -412,19 +379,16 @@ describe('fetch-with-retries', async () => {
 
         try {
             setTimeout(() => controller.abort(abortError), 0);
-            await fetchWithRetries(
-                'https://test.com/test',
-                {
-                    method: 'GET',
-                    signal: controller.signal
-                },
-                {
+            await fetchWithRetries('https://test.com/test', {
+                method: 'GET',
+                signal: controller.signal,
+                retryOptions: {
                     onRetry: () => {
                         retries++;
                     },
                     initialDelay: 10_000
                 }
-            );
+            });
         } catch (e) {
             error = e;
         }

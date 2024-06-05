@@ -5,7 +5,9 @@
 
 import { RETRY_ERROR_CODES, RETRY_STATUS_CODES } from './retry-codes';
 
-type Options = {
+export type Options = RequestInit & { retryOptions?: Partial<RetryOptions> };
+
+type RetryOptions = {
     onRetry?: (params: OnRetry) => void;
     maxRetries: number;
     initialDelay: number;
@@ -26,17 +28,16 @@ export type OnRetry = {
 
 /**
  * @param url fetch url
- * @param requestInit fetch request options
- * @param options retry options
- * @returns promise of a response
+ * @param {Options} options fetch options extended with an additional retryOptions field. The retryOptions field is optional and a default value will be applied to each subfield if not provided.
+ * @returns {Promise<Response>} promise of a response
  */
 export async function fetchWithRetries(
     url: string,
-    requestInit: RequestInit,
-    options: Partial<Options> = {}
+    options: Options
 ): Promise<Response> {
+    const { retryOptions, ...requestInit } = options;
     const { maxRetries, initialDelay, factor, rateLimit, onRetry } =
-        mergeWithDefaultOptions(options);
+        mergeWithDefaultOptions(retryOptions);
     const { signal } = requestInit;
     let attempt = 0;
     let errorRetries = 0;
@@ -135,7 +136,9 @@ export async function fetchWithRetries(
         return initialDelay * Math.pow(factor, retries);
     }
 
-    function mergeWithDefaultOptions(options: Partial<Options>): Options {
+    function mergeWithDefaultOptions(
+        options: Partial<RetryOptions> = {}
+    ): RetryOptions {
         return {
             maxRetries: 3,
             initialDelay: 1000,

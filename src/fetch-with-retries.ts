@@ -178,7 +178,10 @@ function isResponseThatHaveToBeRetried(response: Response): boolean {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function isErrorThatHaveToBeRetried(error: any): boolean {
-    return error?.cause?.code && RETRY_ERROR_CODES.includes(error.cause.code);
+    return (
+        (error?.cause?.code && RETRY_ERROR_CODES.includes(error.cause.code)) ||
+        error.name === 'TimeoutError'
+    );
 }
 
 function wait(

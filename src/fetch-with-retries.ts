@@ -46,12 +46,6 @@ export async function fetchWithRetries(
     let response: Response | null = null;
     let error: any = null; // eslint-disable-line @typescript-eslint/no-explicit-any
 
-    let aborted = false;
-    function setAborted() {
-        aborted = true;
-    }
-    signal?.addEventListener('abort', setAborted);
-
     do {
         response = null;
         error = null;
@@ -68,7 +62,6 @@ export async function fetchWithRetries(
             ) {
                 error = e;
             } else {
-                signal?.removeEventListener('abort', setAborted);
                 throw e;
             }
         }
@@ -83,8 +76,7 @@ export async function fetchWithRetries(
                 isResponseThatHaveToBeRetried(response) &&
                 !hasReachedMaxRetries(errorRetries)) ||
             rateLimitRetry;
-
-        if (retry && !aborted) {
+        if (retry && !shouldAbortRetries(signal, error)) {
             let delay: number;
             if (rateLimitRetry && response !== null) {
                 rateLimitRetries++;
@@ -104,12 +96,9 @@ export async function fetchWithRetries(
             }
             await wait(delay, signal);
         }
-    } while (retry && !aborted);
+    } while (retry && !shouldAbortRetries(signal, error));
 
-    signal?.removeEventListener('abort', setAborted);
-    if (aborted) {
-        signal?.throwIfAborted();
-    }
+    signal?.throwIfAborted();
 
     return response!;
 
@@ -182,6 +171,13 @@ function isErrorThatHaveToBeRetried(error: any): boolean {
         (error?.cause?.code && RETRY_ERROR_CODES.includes(error.cause.code)) ||
         error.name === 'TimeoutError'
     );
+}
+
+function shouldAbortRetries(
+    signal?: AbortSignal,
+    error?: { name: string }
+): boolean {
+    return (signal?.aborted && error?.name !== 'TimeoutError') ?? false;
 }
 
 function wait(

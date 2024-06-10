@@ -159,7 +159,7 @@ export async function fetchWithRetries(
             case !signal && !!timeout:
                 return AbortSignal.timeout(timeout);
             case !!signal && !!timeout:
-                // eslint-disable-line @typescript-eslint/no-explicit-any
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 return (AbortSignal as any).any([
                     signal,
                     AbortSignal.timeout(timeout)

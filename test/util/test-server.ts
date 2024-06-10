@@ -18,7 +18,10 @@ export async function createTestServer(port: number = 30000) {
     await once(server, 'listening');
 
     return {
-        close: () => promisify<void>(server.close.bind(server))(),
+        close: () => {
+            server.closeAllConnections();
+            return promisify<void>(server.close.bind(server))();
+        },
         setRequestListener: (newRequestListener: http.RequestListener) => {
             requestListener = newRequestListener;
         }

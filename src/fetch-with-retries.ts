@@ -5,7 +5,10 @@
 
 import { RETRY_ERROR_CODES, RETRY_STATUS_CODES } from './retry-codes';
 
-export type Options = RequestInit & { retryOptions?: Partial<RetryOptions> };
+export type Options = RequestInit & {
+    timeout?: number;
+    retryOptions?: Partial<RetryOptions>;
+};
 
 type RetryOptions = {
     onRetry?: (params: OnRetry) => void;
@@ -35,10 +38,15 @@ export async function fetchWithRetries(
     url: string,
     options: Options
 ): Promise<Response> {
-    const { retryOptions, ...requestInit } = options;
+    const { retryOptions, timeout, ...requestInit } = options;
     const { maxRetries, initialDelay, factor, rateLimit, onRetry } =
         mergeWithDefaultOptions(retryOptions);
     const { signal } = requestInit;
+    const fetchSignal = composeSignal(signal, timeout);
+    const requestOptions: RequestInit = {
+        ...requestInit,
+        ...(fetchSignal && { signal: fetchSignal })
+    };
     let attempt = 0;
     let errorRetries = 0;
     let rateLimitRetries = 0;
@@ -52,7 +60,7 @@ export async function fetchWithRetries(
         attempt++;
 
         try {
-            response = await fetch(url, requestInit);
+            response = await fetch(url, requestOptions);
         } catch (e) {
             if ((e as { type: string }).type === 'aborted') {
                 // do nothing
@@ -76,7 +84,7 @@ export async function fetchWithRetries(
                 isResponseThatHaveToBeRetried(response) &&
                 !hasReachedMaxRetries(errorRetries)) ||
             rateLimitRetry;
-        if (retry && !shouldAbortRetries(signal, error)) {
+        if (retry && !signal?.aborted) {
             let delay: number;
             if (rateLimitRetry && response !== null) {
                 rateLimitRetries++;
@@ -96,7 +104,7 @@ export async function fetchWithRetries(
             }
             await wait(delay, signal);
         }
-    } while (retry && !shouldAbortRetries(signal, error));
+    } while (retry && !signal?.aborted);
 
     signal?.throwIfAborted();
 
@@ -140,6 +148,26 @@ export async function fetchWithRetries(
             ...options
         };
     }
+
+    function composeSignal(
+        signal?: AbortSignal,
+        timeout?: number
+    ): AbortSignal | null {
+        switch (true) {
+            case !!signal && !timeout:
+                return signal;
+            case !signal && !!timeout:
+                return AbortSignal.timeout(timeout);
+            case !!signal && !!timeout:
+                // eslint-disable-line @typescript-eslint/no-explicit-any
+                return (AbortSignal as any).any([
+                    signal,
+                    AbortSignal.timeout(timeout)
+                ]);
+            default:
+                return null;
+        }
+    }
 }
 
 function isRateLimitRetry(response: Response): boolean {
@@ -171,13 +199,6 @@ function isErrorThatHaveToBeRetried(error: any): boolean {
         (error?.cause?.code && RETRY_ERROR_CODES.includes(error.cause.code)) ||
         error.name === 'TimeoutError'
     );
-}
-
-function shouldAbortRetries(
-    signal?: AbortSignal,
-    error?: { name: string }
-): boolean {
-    return (signal?.aborted && error?.name !== 'TimeoutError') ?? false;
 }
 
 function wait(

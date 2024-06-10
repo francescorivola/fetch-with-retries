@@ -42,7 +42,7 @@ describe('fetch-with-retries-real-network', async () => {
             setTimeout(() => {
                 res.writeHead(200);
                 res.end(JSON.stringify({ message: 'ok' }));
-            }, 1000);
+            }, 100);
         });
 
         try {
@@ -56,7 +56,7 @@ describe('fetch-with-retries-real-network', async () => {
                     maxRetries: 1,
                     initialDelay: 0
                 },
-                signal: AbortSignal.timeout(50)
+                timeout: 50
             });
         } catch (e) {
             error = e;
@@ -66,5 +66,40 @@ describe('fetch-with-retries-real-network', async () => {
         equal(attempts, 1, 'attempts');
         equal(error instanceof Error, true, 'error instance of error');
         equal(error.name, 'TimeoutError');
+    });
+
+    await test('should abort without retry, even when timeout is provided', async () => {
+        let retries = 0;
+        let attempts = 0;
+        let error: any = null; // eslint-disable-line @typescript-eslint/no-explicit-any
+
+        server.setRequestListener((req, res) => {
+            setTimeout(() => {
+                res.writeHead(200);
+                res.end(JSON.stringify({ message: 'ok' }));
+            }, 100);
+        });
+
+        try {
+            await fetchWithRetries('http://localhost:30000', {
+                method: 'GET',
+                retryOptions: {
+                    onRetry: params => {
+                        attempts = params.attempt;
+                        retries++;
+                    },
+                    maxRetries: 1,
+                    initialDelay: 0
+                },
+                signal: AbortSignal.timeout(50),
+                timeout: 2000
+            });
+        } catch (e) {
+            error = e;
+        }
+
+        equal(retries, 0, 'retries');
+        equal(attempts, 0, 'attempts');
+        equal(error instanceof Error, true, 'error instance of error');
     });
 });

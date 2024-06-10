@@ -33,7 +33,35 @@ describe('fetch-with-retries-real-network', async () => {
         deepStrictEqual(body, { message: 'ok' });
     });
 
-    await test('should throw the error after retrying network errors', async () => {
+    await test('should throw error not found after retrying', async () => {
+        let retries = 0;
+        let attempts = 0;
+        let error: any = null; // eslint-disable-line @typescript-eslint/no-explicit-any
+
+        try {
+            await fetchWithRetries('https://this-url-does-not-exist.com', {
+                method: 'GET',
+                retryOptions: {
+                    onRetry: params => {
+                        attempts = params.attempt;
+                        retries++;
+                    },
+                    maxRetries: 1,
+                    initialDelay: 0
+                }
+            });
+        } catch (e) {
+            error = e;
+        }
+
+        equal(retries, 1, 'retries');
+        equal(attempts, 1, 'attempts');
+        equal(error instanceof Error, true, 'error instance of error');
+        equal(error.message, 'fetch failed');
+        equal(error.cause.code, 'ENOTFOUND');
+    });
+
+    await test('should throw a timeout error after retrying it once', async () => {
         let retries = 0;
         let attempts = 0;
         let error: any = null; // eslint-disable-line @typescript-eslint/no-explicit-any

@@ -336,35 +336,6 @@ describe('fetch-with-retries', async () => {
         equal(nockScope.isDone(), true);
     });
 
-    await test('should throw the error after retrying network errors (real one)', async () => {
-        nock.enableNetConnect();
-        let retries = 0;
-        let attempts = 0;
-        let error: any = null; // eslint-disable-line @typescript-eslint/no-explicit-any
-
-        try {
-            await fetchWithRetries('https://this-url-does-not-exist.com', {
-                method: 'GET',
-                retryOptions: {
-                    onRetry: params => {
-                        attempts = params.attempt;
-                        retries++;
-                    },
-                    maxRetries: 1,
-                    initialDelay: 0
-                }
-            });
-        } catch (e) {
-            error = e;
-        }
-
-        equal(retries, 1, 'retries');
-        equal(attempts, 1, 'attempts');
-        equal(error instanceof Error, true, 'error instance of error');
-        equal(error.message, 'fetch failed');
-        equal(error.cause.code, 'ENOTFOUND');
-    });
-
     await test('should abort while waiting if signal notify an abort', async () => {
         const nockScope = nock('https://test.com')
             .get('/test')

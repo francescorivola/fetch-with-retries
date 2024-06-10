@@ -4,10 +4,10 @@ import { fetchWithRetries } from '../src/index';
 import { createTestServer } from './util/test-server';
 
 describe('fetch-with-retries-real-network', async () => {
-    const server = createTestServer();
+    const server = await createTestServer();
 
-    await after(() => {
-        server.close();
+    await after(async () => {
+        await server.close();
     });
 
     await test('should return the response if ok', async () => {

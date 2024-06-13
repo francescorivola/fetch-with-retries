@@ -52,23 +52,21 @@ export async function fetchWithRetries(
     let rateLimitRetries = 0;
     let retry = false;
     let response: Response | null = null;
-    let error: any = null; // eslint-disable-line @typescript-eslint/no-explicit-any
+    let errorToRetry: any = null; // eslint-disable-line @typescript-eslint/no-explicit-any
 
     do {
         response = null;
-        error = null;
+        errorToRetry = null;
         attempt++;
 
         try {
             response = await fetch(url, requestOptions);
         } catch (e) {
-            if ((e as { type: string }).type === 'aborted') {
-                // do nothing
-            } else if (
+            if (
                 isErrorThatHaveToBeRetried(e) &&
                 !hasReachedMaxRetries(errorRetries)
             ) {
-                error = e;
+                errorToRetry = e;
             } else {
                 throw e;
             }
@@ -79,7 +77,7 @@ export async function fetchWithRetries(
             isRateLimitRetry(response) &&
             !hasReachedRateLimitMaxRetries(rateLimitRetries);
         retry =
-            error ||
+            errorToRetry ||
             (response !== null &&
                 isResponseThatHaveToBeRetried(response) &&
                 !hasReachedMaxRetries(errorRetries)) ||
@@ -95,7 +93,7 @@ export async function fetchWithRetries(
             }
             if (typeof onRetry === 'function') {
                 onRetry({
-                    error,
+                    error: errorToRetry,
                     response,
                     attempt,
                     delay,

@@ -250,6 +250,36 @@ describe('fetch-with-retries', async () => {
         equal(nockScope.isDone(), true);
     });
 
+    await test('should return the response if ok after retrying 3 times network errors with abort signal not invoked', async () => {
+        const nockScope = nock('https://test.com')
+            .get('/test')
+            .times(3)
+            .replyWithError(new FetchError('ENOTFOUND'))
+            .get('/test')
+            .reply(200, { message: 'ok' });
+        let retries = 0;
+        let attempts = 0;
+
+        const response = await fetchWithRetries('https://test.com/test', {
+            method: 'GET',
+            signal: new AbortController().signal,
+            retryOptions: {
+                onRetry: params => {
+                    attempts = params.attempt;
+                    retries++;
+                },
+                initialDelay: 0
+            }
+        });
+
+        equal(retries, 3, 'retries');
+        equal(attempts, 3, 'attempts');
+        equal(response.ok, true);
+        const body = await response.json();
+        deepStrictEqual(body, { message: 'ok' });
+        equal(nockScope.isDone(), true);
+    });
+
     await test('should throw the error without retry if malformed uri', async () => {
         let error: any = null; // eslint-disable-line @typescript-eslint/no-explicit-any
         let retries = 0;

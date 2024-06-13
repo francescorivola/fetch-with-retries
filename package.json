@@ -1,6 +1,6 @@
 {
     "name": "fetch-with-retries",
-    "version": "2.1.0",
+    "version": "2.1.1",
     "description": "Simple and opinionated lib that adds retries out of the box to native Node.js fetch",
     "repository": {
         "type": "git",

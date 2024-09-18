@@ -7,18 +7,30 @@ import { RETRY_ERROR_CODES, RETRY_STATUS_CODES } from './retry-codes';
 
 export type Options = RequestInit & {
     timeout?: number;
-    retryOptions?: Partial<RetryOptions>;
+    retryOptions?: RetryOptions;
 };
 
-type RetryOptions = {
+type RetryOptions = Partial<Omit<InternalRetryOptions, 'rateLimit'>> & {
+    rateLimit?: Partial<RateLimitOptions>;
+};
+
+type CustomHeader = {
+    header: string;
+    valueType: 'wait-seconds' | 'reset-utc-epoch-seconds';
+};
+
+type RateLimitOptions = {
+    maxRetries: number;
+    maxDelay: number;
+    customHeaders: CustomHeader[];
+};
+
+type InternalRetryOptions = {
     onRetry?: (params: OnRetry) => void;
     maxRetries: number;
     initialDelay: number;
     factor: number;
-    rateLimit: {
-        maxRetries: number;
-        maxDelay: number;
-    };
+    rateLimit: RateLimitOptions;
 };
 
 export type OnRetry = {
@@ -41,6 +53,7 @@ export async function fetchWithRetries(
     const { retryOptions, timeout, ...requestInit } = options;
     const { maxRetries, initialDelay, factor, rateLimit, onRetry } =
         mergeWithDefaultOptions(retryOptions);
+    const rateLimitHeaders = getRateLimitHeaders(rateLimit);
     const { signal } = requestInit;
     const fetchSignal = composeSignal(signal, timeout);
     const requestOptions: RequestInit = {
@@ -72,9 +85,9 @@ export async function fetchWithRetries(
             }
         }
 
+        const rateLimitDelay = response ? getRateLimitDelay(response) : null;
         const rateLimitRetry =
-            response !== null &&
-            isRateLimitRetry(response) &&
+            rateLimitDelay !== null &&
             !hasReachedRateLimitMaxRetries(rateLimitRetries);
         retry =
             errorToRetry ||
@@ -84,9 +97,9 @@ export async function fetchWithRetries(
             rateLimitRetry;
         if (retry && !signal?.aborted) {
             let delay: number;
-            if (rateLimitRetry && response !== null) {
+            if (rateLimitRetry) {
                 rateLimitRetries++;
-                delay = getRateLimitDelay(response);
+                delay = rateLimitDelay;
             } else {
                 errorRetries++;
                 delay = getDelay(errorRetries);
@@ -116,14 +129,31 @@ export async function fetchWithRetries(
         return retries >= rateLimit.maxRetries;
     }
 
-    function getRateLimitDelay(response: Response): number {
-        const retryAfter = getRetryAfterFromHeader(response);
-        if (Number.isInteger(retryAfter)) {
-            const delayMs = retryAfter * 1000;
-            return Math.min(delayMs, rateLimit.maxDelay);
+    function getRateLimitDelay(response: Response): number | null {
+        for (const rateLimitHeader of rateLimitHeaders) {
+            const { header, valueType, statusCodes } = rateLimitHeader;
+            const value = getRateLimitHeaderValue(header, response);
+            if (
+                Number.isInteger(value) &&
+                statusCodes.includes(response.status)
+            ) {
+                switch (valueType) {
+                    case 'wait-seconds':
+                        return getDelayFromSeconds(value);
+                    case 'reset-utc-epoch-seconds':
+                        return getDelayFromEpochSeconds(value);
+                }
+            }
         }
-        const xRateLimitReset = getXRateLimitResetFromHeader(response);
-        const delayMs = xRateLimitReset * 1000 - Date.now();
+        return null;
+    }
+
+    function getDelayFromSeconds(seconds: number): number {
+        return Math.min(seconds * 1000, rateLimit.maxDelay);
+    }
+
+    function getDelayFromEpochSeconds(epochSeconds: number): number {
+        const delayMs = epochSeconds * 1000 - Date.now();
         return Math.min(delayMs, rateLimit.maxDelay);
     }
 
@@ -132,8 +162,9 @@ export async function fetchWithRetries(
     }
 
     function mergeWithDefaultOptions(
-        options: Partial<RetryOptions> = {}
-    ): RetryOptions {
+        options: RetryOptions = {}
+    ): InternalRetryOptions {
+        const { rateLimit, ...restOfOptions } = options;
         return {
             maxRetries: 3,
             initialDelay: 1000,
@@ -141,10 +172,32 @@ export async function fetchWithRetries(
             rateLimit: {
                 maxRetries: 10,
                 maxDelay: 60_000,
-                ...options.rateLimit
+                customHeaders: [],
+                ...rateLimit
             },
-            ...options
+            ...restOfOptions
         };
+    }
+
+    function getRateLimitHeaders(rateLimit: RateLimitOptions) {
+        return [
+            {
+                // We check for 429 and 503 Retry-After header value if set
+                // see https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Retry-After
+                header: 'Retry-After',
+                valueType: 'wait-seconds',
+                statusCodes: [429, 503]
+            },
+            {
+                header: 'X-RateLimit-Reset',
+                valueType: 'reset-utc-epoch-seconds',
+                statusCodes: [429, 503]
+            },
+            ...rateLimit.customHeaders.map(c => ({
+                ...c,
+                statusCodes: [429]
+            }))
+        ];
     }
 
     function composeSignal(
@@ -168,23 +221,8 @@ export async function fetchWithRetries(
     }
 }
 
-function isRateLimitRetry(response: Response): boolean {
-    // We check for 429 and 503 Retry-After header value if set
-    // see https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Retry-After
-    return (
-        ([429, 503].includes(response.status) &&
-            Number.isInteger(getRetryAfterFromHeader(response))) ||
-        (response.status === 429 &&
-            Number.isInteger(getXRateLimitResetFromHeader(response)))
-    );
-}
-
-function getRetryAfterFromHeader(response: Response): number {
-    return parseInt(response.headers.get('Retry-After') || '', 10);
-}
-
-function getXRateLimitResetFromHeader(response: Response): number {
-    return parseInt(response.headers.get('X-RateLimit-Reset') || '', 10);
+function getRateLimitHeaderValue(header: string, response: Response): number {
+    return parseInt(response.headers.get(header) || '', 10);
 }
 
 function isResponseThatHaveToBeRetried(response: Response): boolean {

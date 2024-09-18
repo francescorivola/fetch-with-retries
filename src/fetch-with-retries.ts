@@ -53,6 +53,7 @@ export async function fetchWithRetries(
     const { retryOptions, timeout, ...requestInit } = options;
     const { maxRetries, initialDelay, factor, rateLimit, onRetry } =
         mergeWithDefaultOptions(retryOptions);
+    const rateLimitHeaders = getRateLimitHeaders(rateLimit);
     const { signal } = requestInit;
     const fetchSignal = composeSignal(signal, timeout);
     const requestOptions: RequestInit = {
@@ -129,16 +130,8 @@ export async function fetchWithRetries(
     }
 
     function getRateLimitDelay(response: Response): number {
-        const retryAfter = getRetryAfterFromHeader(response);
-        if (Number.isInteger(retryAfter)) {
-            return getDelayFromSeconds(retryAfter);
-        }
-        const xRateLimitReset = getXRateLimitResetFromHeader(response);
-        if (Number.isInteger(xRateLimitReset)) {
-            return getDelayFromEpochSeconds(xRateLimitReset);
-        }
-        for (const customHeader of rateLimit.customHeaders) {
-            const { header, valueType } = customHeader;
+        for (const rateLimitHeader of rateLimitHeaders) {
+            const { header, valueType } = rateLimitHeader;
             const value = getRateLimitHeaderValue(header, response);
             if (!Number.isInteger(value)) {
                 continue;
@@ -149,10 +142,12 @@ export async function fetchWithRetries(
                 case 'reset-utc-epoch-seconds':
                     return getDelayFromEpochSeconds(value);
                 default:
-                    throw new Error(`Unsupported valueType: ${valueType}`);
+                    throw new Error(
+                        `Unknown value type for header ${header}: ${valueType}`
+                    );
             }
         }
-        throw new Error('No valid rate limit header found');
+        throw new Error('No rate limit header found');
     }
 
     function getDelayFromSeconds(seconds: number): number {
@@ -184,6 +179,20 @@ export async function fetchWithRetries(
             },
             ...restOfOptions
         };
+    }
+
+    function getRateLimitHeaders(rateLimit: RateLimitOptions) {
+        return [
+            {
+                header: 'Retry-After',
+                valueType: 'wait-seconds'
+            },
+            {
+                header: 'X-RateLimit-Reset',
+                valueType: 'reset-utc-epoch-seconds'
+            },
+            ...rateLimit.customHeaders
+        ];
     }
 
     function composeSignal(

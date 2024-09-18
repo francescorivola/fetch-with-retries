@@ -97,7 +97,7 @@ export async function fetchWithRetries(
             rateLimitRetry;
         if (retry && !signal?.aborted) {
             let delay: number;
-            if (rateLimitRetry && response !== null) {
+            if (rateLimitRetry) {
                 rateLimitRetries++;
                 delay = rateLimitDelay;
             } else {

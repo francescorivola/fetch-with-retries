@@ -85,9 +85,9 @@ export async function fetchWithRetries(
             }
         }
 
+        const rateLimitDelay = response ? getRateLimitDelay(response) : null;
         const rateLimitRetry =
-            response !== null &&
-            isRateLimitRetry(response) &&
+            rateLimitDelay !== null &&
             !hasReachedRateLimitMaxRetries(rateLimitRetries);
         retry =
             errorToRetry ||
@@ -99,7 +99,7 @@ export async function fetchWithRetries(
             let delay: number;
             if (rateLimitRetry && response !== null) {
                 rateLimitRetries++;
-                delay = getRateLimitDelay(response);
+                delay = rateLimitDelay;
             } else {
                 errorRetries++;
                 delay = getDelay(errorRetries);
@@ -129,25 +129,23 @@ export async function fetchWithRetries(
         return retries >= rateLimit.maxRetries;
     }
 
-    function getRateLimitDelay(response: Response): number {
+    function getRateLimitDelay(response: Response): number | null {
         for (const rateLimitHeader of rateLimitHeaders) {
-            const { header, valueType } = rateLimitHeader;
+            const { header, valueType, statusCodes } = rateLimitHeader;
             const value = getRateLimitHeaderValue(header, response);
-            if (!Number.isInteger(value)) {
-                continue;
-            }
-            switch (valueType) {
-                case 'wait-seconds':
-                    return getDelayFromSeconds(value);
-                case 'reset-utc-epoch-seconds':
-                    return getDelayFromEpochSeconds(value);
-                default:
-                    throw new Error(
-                        `Unknown value type for header ${header}: ${valueType}`
-                    );
+            if (
+                Number.isInteger(value) &&
+                statusCodes.includes(response.status)
+            ) {
+                switch (valueType) {
+                    case 'wait-seconds':
+                        return getDelayFromSeconds(value);
+                    case 'reset-utc-epoch-seconds':
+                        return getDelayFromEpochSeconds(value);
+                }
             }
         }
-        throw new Error('No rate limit header found');
+        return null;
     }
 
     function getDelayFromSeconds(seconds: number): number {
@@ -181,17 +179,24 @@ export async function fetchWithRetries(
         };
     }
 
-    function getRateLimitHeaders(rateLimit: RateLimitOptions): CustomHeader[] {
+    function getRateLimitHeaders(rateLimit: RateLimitOptions) {
         return [
             {
+                // We check for 429 and 503 Retry-After header value if set
+                // see https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Retry-After
                 header: 'Retry-After',
-                valueType: 'wait-seconds'
+                valueType: 'wait-seconds',
+                statusCodes: [429, 503]
             },
             {
                 header: 'X-RateLimit-Reset',
-                valueType: 'reset-utc-epoch-seconds'
+                valueType: 'reset-utc-epoch-seconds',
+                statusCodes: [429, 503]
             },
-            ...rateLimit.customHeaders
+            ...rateLimit.customHeaders.map(c => ({
+                ...c,
+                statusCodes: [429]
+            }))
         ];
     }
 
@@ -214,39 +219,6 @@ export async function fetchWithRetries(
                 return null;
         }
     }
-
-    function isRateLimitRetry(response: Response): boolean {
-        // We check for 429 and 503 Retry-After header value if set
-        // see https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Retry-After
-        return (
-            ([429, 503].includes(response.status) &&
-                hasRetryAfterHeader(response)) ||
-            (response.status === 429 && hasXRateLimitResetHeader(response)) ||
-            rateLimit.customHeaders.some(({ header }) =>
-                hasCustomHeader(header, response)
-            )
-        );
-    }
-}
-
-function hasCustomHeader(header: string, response: Response): boolean {
-    return Number.isInteger(getRateLimitHeaderValue(header, response));
-}
-
-function hasXRateLimitResetHeader(response: Response): boolean {
-    return Number.isInteger(getXRateLimitResetFromHeader(response));
-}
-
-function hasRetryAfterHeader(response: Response): boolean {
-    return Number.isInteger(getRetryAfterFromHeader(response));
-}
-
-function getRetryAfterFromHeader(response: Response): number {
-    return getRateLimitHeaderValue('Retry-After', response);
-}
-
-function getXRateLimitResetFromHeader(response: Response): number {
-    return getRateLimitHeaderValue('X-RateLimit-Reset', response);
 }
 
 function getRateLimitHeaderValue(header: string, response: Response): number {

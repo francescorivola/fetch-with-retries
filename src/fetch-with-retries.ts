@@ -181,7 +181,7 @@ export async function fetchWithRetries(
         };
     }
 
-    function getRateLimitHeaders(rateLimit: RateLimitOptions) {
+    function getRateLimitHeaders(rateLimit: RateLimitOptions): CustomHeader[] {
         return [
             {
                 header: 'Retry-After',

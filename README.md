@@ -14,6 +14,7 @@ It's designed to handle both network errors and service issues, such as rate lim
 -   Automatic retries for network errors and certain HTTP status codes.
 -   Exponential backoff for retry delays.
 -   Support for `Retry-After` and `X-RateLimit-Reset` headers.
+-   Support for custom rate limit headers (i.e.: `X-RateLimit-Wait`)
 -   Customizable retry conditions.
 -   Timeout option for the fetch request.
 -   Allow to abort wait between retries with fetch signal and AbortController.

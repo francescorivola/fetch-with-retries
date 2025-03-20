@@ -16,7 +16,7 @@ type RetryOptions = Partial<Omit<InternalRetryOptions, 'rateLimit'>> & {
 
 type CustomHeader = {
     header: string;
-    valueType: 'wait-seconds' | 'reset-utc-epoch-seconds';
+    valueType: 'wait-seconds' | 'reset-utc-epoch-seconds' | 'wait-milliseconds';
 };
 
 type RateLimitOptions = {
@@ -142,6 +142,8 @@ export async function fetchWithRetries(
                         return getDelayFromSeconds(value);
                     case 'reset-utc-epoch-seconds':
                         return getDelayFromEpochSeconds(value);
+                    case 'wait-milliseconds':
+                        return getDelayFromMilliSeconds(value);
                 }
             }
         }
@@ -155,6 +157,10 @@ export async function fetchWithRetries(
     function getDelayFromEpochSeconds(epochSeconds: number): number {
         const delayMs = epochSeconds * 1000 - Date.now();
         return Math.min(delayMs, rateLimit.maxDelay);
+    }
+
+    function getDelayFromMilliSeconds(milliSeconds: number): number {
+        return Math.min(milliSeconds, rateLimit.maxDelay);
     }
 
     function getDelay(retries: number): number {

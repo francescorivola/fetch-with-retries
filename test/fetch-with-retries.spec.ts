@@ -248,42 +248,56 @@ describe('fetch-with-retries', async () => {
         equal(nockScope.isDone(), true);
     });
 
-    await test('should return the response if ok after retrying 10 times 429 with set custom rate limit header', async () => {
-        const nockScope = nock('https://test.com')
-            .get('/test')
-            .times(10)
-            .reply(429, { message: 'error' }, { 'X-RateLimit-Wait': '0' })
-            .get('/test')
-            .reply(200, { message: 'ok' });
-        let retries = 0;
-        let attempts = 0;
+    const customHeaders: {
+        header: string;
+        valueType:
+            | 'wait-seconds'
+            | 'reset-utc-epoch-seconds'
+            | 'wait-milliseconds';
+    }[] = [
+        {
+            header: 'X-RateLimit-Wait',
+            valueType: 'wait-seconds'
+        },
+        { header: 'x-rate-limit-time-reset-ms', valueType: 'wait-milliseconds' }
+    ];
+    for (const customHeader of customHeaders) {
+        await test(`should return the response if ok after retrying 10 times 429 with set custom rate limit header ${customHeader.header} with valueType ${customHeader.valueType}`, async () => {
+            const nockScope = nock('https://test.com')
+                .get('/test')
+                .times(10)
+                .reply(
+                    429,
+                    { message: 'error' },
+                    { [customHeader.header]: '0' }
+                )
+                .get('/test')
+                .reply(200, { message: 'ok' });
+            let retries = 0;
+            let attempts = 0;
 
-        const response = await fetchWithRetries('https://test.com/test', {
-            method: 'GET',
-            retryOptions: {
-                onRetry: params => {
-                    attempts = params.attempt;
-                    retries++;
-                },
-                initialDelay: 0,
-                rateLimit: {
-                    customHeaders: [
-                        {
-                            header: 'X-RateLimit-Wait',
-                            valueType: 'wait-seconds'
-                        }
-                    ]
+            const response = await fetchWithRetries('https://test.com/test', {
+                method: 'GET',
+                retryOptions: {
+                    onRetry: params => {
+                        attempts = params.attempt;
+                        retries++;
+                    },
+                    initialDelay: 0,
+                    rateLimit: {
+                        customHeaders: [customHeader]
+                    }
                 }
-            }
-        });
+            });
 
-        equal(retries, 10, 'retries');
-        equal(attempts, 10, 'attempts');
-        equal(response.ok, true);
-        const body = await response.json();
-        deepStrictEqual(body, { message: 'ok' });
-        equal(nockScope.isDone(), true);
-    });
+            equal(retries, 10, 'retries');
+            equal(attempts, 10, 'attempts');
+            equal(response.ok, true);
+            const body = await response.json();
+            deepStrictEqual(body, { message: 'ok' });
+            equal(nockScope.isDone(), true);
+        });
+    }
 
     await test('should return the response if ok after retrying 3 times network errors', async () => {
         const nockScope = nock('https://test.com')

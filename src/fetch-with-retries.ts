@@ -207,7 +207,7 @@ export async function fetchWithRetries(
     }
 
     function composeSignal(
-        signal?: AbortSignal,
+        signal?: AbortSignal | null,
         timeout?: number
     ): AbortSignal | null {
         switch (true) {
@@ -245,7 +245,7 @@ function isErrorThatHaveToBeRetried(error: any): boolean {
 
 function wait(
     durationInMilliseconds: number,
-    signal?: AbortSignal
+    signal?: AbortSignal | null
 ): Promise<void> {
     return new Promise<void>(resolve => {
         signal?.addEventListener('abort', handleAbort);
